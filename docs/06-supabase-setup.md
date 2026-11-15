@@ -5,6 +5,8 @@ supabase.com/pricing before relying on a number. Known behaviour to plan around:
 period of inactivity (restore from the dashboard), and there is no automatic backup you control. Do not put real client
 data in the free project until you have upgraded and checked the backup options (see `07-privacy-popia.md`).
 
+> The owner has created the project in **West Europe (London)**. Step 1 is kept for reference.
+
 ## 1. Create the project
 
 1. Sign in at supabase.com and create a new project.

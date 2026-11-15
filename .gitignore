@@ -27,3 +27,7 @@ supabase/.temp/
 
 # External reference repo (cloned separately, read-only)
 design-reference/
+
+# Agent-skill links created by `npx skills` (machine-specific absolute symlinks; recreate with the skills CLI from skills-lock.json)
+.claude/skills/supabase
+.claude/skills/supabase-postgres-best-practices
