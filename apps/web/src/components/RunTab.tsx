@@ -3,6 +3,7 @@ import {
   estimateSeconds,
   fmtClock,
   isActive,
+  setProgress,
   stepState,
   type HistoryEntry,
   type Layout,
@@ -62,6 +63,7 @@ export function RunTab({
   place,
 }: Props) {
   const active = isActive(run);
+  const sp = setProgress(run, items);
   const doneN = run.order.length;
   const planned = Math.round(estimateSeconds(items) / 60);
 
@@ -96,7 +98,9 @@ export function RunTab({
                     <strong>{e ? e.name : 'Removed equipment'}</strong>
                     <span className="sub">{`${it.exercise} · ${it.sets} x ${it.reps}`}</span>
                     <span className="chipst">
-                      {ss === 'now' && run.status === 'paused' ? 'Paused' : LABEL[ss]}
+                      {ss === 'now'
+                        ? `${run.status === 'paused' ? 'Paused' : run.restLeft !== null ? 'Resting' : 'Now'}${sp && sp.sets > 1 ? ` · set ${sp.setNo} of ${sp.sets}` : ''}`
+                        : LABEL[ss]}
                     </span>
                   </div>
                   {run.status !== 'idle' && (

@@ -28,6 +28,7 @@ import { useGymData, type GymDataLoader } from './data/useLayout.ts';
 import type { HistoryApi } from './data/history.ts';
 import type { Template, TemplateApi } from './data/templates.ts';
 import { copyText } from './lib/clipboard.ts';
+import { loadRunInProgress } from './run/runStore.ts';
 import { useRun } from './run/useRun.ts';
 import { newUid } from './session/sessionState.ts';
 import { useSession } from './session/useSession.ts';
@@ -50,8 +51,11 @@ interface ToastState {
 
 export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
-  const [tab, setTab] = useState<TabId>('zone');
-  const [gymId, setGymId] = useState(gyms[0]?.id ?? '');
+  // A workout in progress that was saved before a reload reopens its own gym and the Run tab.
+  const [saved] = useState(() => loadRunInProgress());
+  const resumeGym = saved && gyms.some((g) => g.id === saved.gymId) ? saved.gymId : null;
+  const [tab, setTab] = useState<TabId>(resumeGym ? 'run' : 'zone');
+  const [gymId, setGymId] = useState(resumeGym ?? gyms[0]?.id ?? '');
   const [floorId, setFloorId] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [selZone, setSelZone] = useState<string | null>(null);
@@ -66,10 +70,27 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
   const gym = gyms.find((g) => g.id === gymId) ?? gyms[0];
   const gymState = useGymData(loadGym, gym?.id ?? null);
   const { session, dispatch } = useSession(gym?.id ?? null);
-  const rc = useRun(session.items);
+  const rc = useRun(session.items, gym?.id ?? null);
   const run = rc.run;
   const runLive = isActive(run);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  // Tell the trainer a restored workout is waiting, paused, and say when a rest is over (screen readers too).
+  useEffect(() => {
+    if (!rc.restored) return;
+    setRunMsg(
+      'Your workout was restored after the page reloaded. It is paused: press Resume when your client is ready.',
+    );
+    clearTimeout(toastTimer.current);
+    setToast({ msg: 'Workout restored and paused. Press Resume to carry on.', view: false });
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+    // Once, on first load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const restEnds = run.restEnds;
+  useEffect(() => {
+    if (restEnds > 0) setAnnounce('Rest over. Start the next set.');
+  }, [restEnds]);
 
   const data = gymState.status === 'ready' ? gymState.data : null;
   const layout: Layout | null = data?.layout ?? null;
@@ -304,7 +325,7 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
     mode === 'edit'
       ? 'Layout editing arrives in a later phase. For now the plan is read-only.'
       : runLive
-        ? 'Workout running. Tap a machine on the plan to jump to it, or use Done, next on the bar above.'
+        ? 'Workout running. Tap a machine on the plan to jump to it, or use Set done and Done, next on the bar above. The rest between sets counts down and buzzes when it is over.'
         : run.status === 'finished'
           ? 'Workout finished. Copy the log from the Run tab, or reset to run it again.'
           : tab === 'run'
@@ -351,6 +372,8 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
             onResume={rc.resume}
             onBack={rc.back}
             onNext={nextStep}
+            onCompleteSet={rc.completeSet}
+            onSkipRest={rc.skipRest}
             onCopyLog={() => void copyLog()}
             onReset={resetRun}
           />

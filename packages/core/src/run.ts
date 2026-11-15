@@ -27,10 +27,28 @@ export interface RunState {
   startedAt: number;
   /** Id of the history entry once the run has been saved, so a re-finish updates it. */
   histId: string;
+  /** The set the client is on at the current step (1-based). */
+  setNo: number;
+  /** Rest between sets: milliseconds left, or null when not resting. It only counts down while running. */
+  restLeft: number | null;
+  /** Counts rests that ran out by themselves (not skipped). The UI buzzes when this goes up. */
+  restEnds: number;
 }
 
 export function newRun(): RunState {
-  return { status: 'idle', total: 0, last: 0, steps: {}, order: [], cur: null, startedAt: 0, histId: '' };
+  return {
+    status: 'idle',
+    total: 0,
+    last: 0,
+    steps: {},
+    order: [],
+    cur: null,
+    startedAt: 0,
+    histId: '',
+    setNo: 1,
+    restLeft: null,
+    restEnds: 0,
+  };
 }
 
 export const isActive = (r: RunState): boolean => r.status === 'running' || r.status === 'paused';
@@ -41,6 +59,9 @@ export const isRunView = (r: RunState, tabIsRun: boolean, editMode: boolean): bo
 
 const indexOfUid = (items: SessionItem[], uid: string | null): number =>
   items.findIndex((i) => i.uid === uid);
+
+/** Moving to a different step starts again at set 1 with no rest running. */
+const atNewStep = { setNo: 1, restLeft: null } as const;
 
 /** The next step not yet done after `afterUid`, wrapping round; null when everything is done. */
 export function nextUndone(r: RunState, items: SessionItem[], afterUid: string | null): string | null {
@@ -53,16 +74,30 @@ export function nextUndone(r: RunState, items: SessionItem[], afterUid: string |
   return null;
 }
 
-/** Adds the time since the last tick to the total and to the current step. */
+/**
+ * Adds the time since the last tick to the total and to the current step, and counts the rest down.
+ * A rest that reaches zero clears itself and bumps `restEnds` so the UI can vibrate.
+ */
 export function tick(r: RunState, now: number): RunState {
   if (r.status !== 'running') return r;
   const d = Math.max(0, now - r.last);
   const cur = r.cur ? r.steps[r.cur] : undefined;
+  let restLeft = r.restLeft;
+  let restEnds = r.restEnds;
+  if (restLeft !== null) {
+    restLeft -= d;
+    if (restLeft <= 0) {
+      restLeft = null;
+      restEnds += 1;
+    }
+  }
   return {
     ...r,
     last: now,
     total: r.total + d,
     steps: cur && r.cur ? { ...r.steps, [r.cur]: { ...cur, ms: cur.ms + d } } : r.steps,
+    restLeft,
+    restEnds,
   };
 }
 
@@ -82,7 +117,7 @@ export function next(r: RunState, items: SessionItem[], now: number): RunState {
   if (cur && s && !s.done)
     run = { ...run, steps: { ...run.steps, [cur]: { ...s, done: true } }, order: [...run.order, cur] };
   const nx = nextUndone(run, items, cur);
-  return nx ? { ...run, cur: nx } : { ...run, status: 'finished', cur: null };
+  return nx ? { ...run, cur: nx, ...atNewStep } : { ...run, status: 'finished', cur: null, ...atNewStep };
 }
 
 /** Undo the last completed step (also reopens a finished run, paused). */
@@ -99,6 +134,7 @@ export function back(r: RunState, now: number): RunState {
     status: run.status === 'finished' ? 'paused' : run.status,
     cur: prev,
     last: now,
+    ...atNewStep,
   };
 }
 
@@ -115,7 +151,7 @@ export function jump(r: RunState, uid: string, now: number): RunState {
   if (!isActive(r) || uid === r.cur) return r;
   const s = r.steps[uid];
   if (!s || s.done) return r;
-  return { ...tick(r, now), cur: uid };
+  return { ...tick(r, now), cur: uid, ...atNewStep };
 }
 
 export type JumpResult = { run: RunState; outcome: 'jumped' | 'here' | 'unavailable' };
@@ -139,9 +175,54 @@ export function reconcile(r: RunState, items: SessionItem[]): RunState {
   let run: RunState = { ...r, steps, order: r.order.filter((u) => ids.has(u)) };
   if (isActive(run) && (!run.cur || !ids.has(run.cur))) {
     const nx = nextUndone(run, items, null);
-    run = nx ? { ...run, cur: nx } : { ...run, status: 'finished', cur: null };
+    run = nx ? { ...run, cur: nx, ...atNewStep } : { ...run, status: 'finished', cur: null, ...atNewStep };
   }
+  // Editing the sets of the current exercise mid-run must not leave the client past its last set.
+  const here = items.find((i) => i.uid === run.cur);
+  if (here && run.setNo > here.sets) run = { ...run, setNo: Math.max(1, here.sets), restLeft: null };
   return run;
+}
+
+/* ---------------------------------------------------------------- sets and rest */
+
+export interface SetProgress {
+  /** The set the client is on (1-based). */
+  setNo: number;
+  /** Planned sets for the current exercise. */
+  sets: number;
+  /** Planned rest between sets, in seconds. */
+  restSeconds: number;
+  /** Rest left in ms, or null when not resting. */
+  restLeft: number | null;
+  /** True on the final set: the next tap moves to the next machine. */
+  lastSet: boolean;
+}
+
+/** Where the client is within the current exercise, or null when there is no current step. */
+export function setProgress(r: RunState, items: SessionItem[]): SetProgress | null {
+  const it = items.find((i) => i.uid === r.cur);
+  if (!it) return null;
+  const sets = Math.max(1, it.sets);
+  const setNo = Math.min(Math.max(1, r.setNo), sets);
+  return { setNo, sets, restSeconds: Math.max(0, it.rest), restLeft: r.restLeft, lastSet: setNo >= sets };
+}
+
+/**
+ * The client finished a set. If there are more sets, move to the next one and start the rest between them
+ * (when the exercise has a rest time). On the last set this does nothing: use `next` to move on.
+ */
+export function completeSet(r: RunState, items: SessionItem[], now: number): RunState {
+  if (!isActive(r) || r.restLeft !== null) return r;
+  const p = setProgress(r, items);
+  if (!p || p.lastSet) return r;
+  const run = tick(r, now);
+  return { ...run, setNo: p.setNo + 1, restLeft: p.restSeconds > 0 ? p.restSeconds * 1000 : null };
+}
+
+/** End the rest early and start the next set now. */
+export function skipRest(r: RunState, now: number): RunState {
+  if (!isActive(r) || r.restLeft === null) return r;
+  return { ...tick(r, now), restLeft: null };
 }
 
 export type StepState = 'ready' | 'now' | 'done' | 'skip' | 'next';
@@ -243,5 +324,5 @@ export const RUN_WORD: Record<StepState, string> = {
 /** End the workout now (the "End workout" button): the clock stops, steps keep what was done, the rest are skipped. */
 export function finish(r: RunState, now: number): RunState {
   if (!isActive(r)) return r;
-  return { ...tick(r, now), status: 'finished', cur: null };
+  return { ...tick(r, now), status: 'finished', cur: null, ...atNewStep };
 }

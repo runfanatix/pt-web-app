@@ -155,7 +155,7 @@ describe('live run', () => {
       expect(marker(container, machineA.id)).toHaveClass('st-done');
       expect(marker(container, machineB.id)).toHaveClass('st-now');
       await advance(30_000);
-      fireEvent.click(hudButton('Done, finish'));
+      fireEvent.click(hudButton('Finish'));
       await advance(50);
       expect(within(hud()).getByText('Workout finished')).toBeInTheDocument();
       expect(within(hud()).getByText('2 of 2 steps done')).toBeInTheDocument();
@@ -185,14 +185,14 @@ describe('live run', () => {
       await advance(1000);
       fireEvent.click(hudButton('Done, next'));
       await advance(1000);
-      fireEvent.click(hudButton('Done, finish'));
+      fireEvent.click(hudButton('Finish'));
       await advance(50);
       const firstId = h.store[0]!.id;
       fireEvent.click(hudButton('Undo last'));
       expect(within(hud()).getByText(/Paused/)).toBeInTheDocument();
       fireEvent.click(hudButton('Resume'));
       await advance(2000);
-      fireEvent.click(hudButton('Done, finish'));
+      fireEvent.click(hudButton('Finish'));
       await advance(50);
       expect(h.api.save).toHaveBeenCalledTimes(2);
       expect(h.store).toHaveLength(1);
@@ -322,5 +322,192 @@ describe('live run', () => {
       expect(screen.getByText(/could not be saved: network down/)).toBeInTheDocument();
       expect(within(hud()).getByText('Workout finished')).toBeInTheDocument();
     });
+  });
+});
+
+/* ---------------------------------------------------------------- rest between sets and keeping a run across a reload */
+
+/** A machine whose exercise has several sets and a rest, so the rest countdown applies. */
+const multiSet = machines.find((m) => {
+  const x = exercisesFor(library, m.id)[0]!;
+  return x.sets >= 3 && x.rest >= 20;
+})!;
+
+async function runWithMultiSet(h = fakeHistory()) {
+  const view = mount(h);
+  await ready();
+  const x = await addFrom(view.container, multiSet.id);
+  fireEvent.keyDown(document, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('tab', { name: /^Run/ }));
+  return { ...view, x, h };
+}
+const restClock = () => within(hud()).getByRole('timer', { name: 'Rest left' });
+
+describe('rest between sets', () => {
+  it('Set done starts the rest countdown, which buzzes when it runs out', async () => {
+    const vibrate = vi.fn(() => true);
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const { x } = await runWithMultiSet();
+      await underFakeClock(async () => {
+        fireEvent.click(hudButton('Start workout'));
+        expect(within(hud()).getByText(new RegExp(`set 1 of ${x.sets}`))).toBeInTheDocument();
+        await advance(20_000);
+        fireEvent.click(hudButton('Set done'));
+        expect(
+          within(hud()).getByText(new RegExp(`Rest · step 1 of 1 · set 2 of ${x.sets}`)),
+        ).toBeInTheDocument();
+        expect(within(hud()).getByText(new RegExp(`Rest, then set 2 of ${x.sets}`))).toBeInTheDocument();
+        expect(restClock()).toHaveTextContent(fmt(x.rest));
+        await advance(10_000);
+        expect(restClock()).toHaveTextContent(fmt(x.rest - 10));
+        expect(vibrate).not.toHaveBeenCalled();
+        await advance(x.rest * 1000);
+        expect(vibrate).toHaveBeenCalledTimes(1);
+        expect(within(hud()).queryByRole('timer', { name: 'Rest left' })).toBeNull();
+        expect(screen.getByText('Rest over. Start the next set.')).toBeInTheDocument();
+      });
+    } finally {
+      Reflect.deleteProperty(navigator, 'vibrate');
+    }
+  });
+
+  it('pausing freezes the rest, and skipping it does not buzz', async () => {
+    const vibrate = vi.fn(() => true);
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const { x } = await runWithMultiSet();
+      await underFakeClock(async () => {
+        fireEvent.click(hudButton('Start workout'));
+        fireEvent.click(hudButton('Set done'));
+        await advance(5000);
+        fireEvent.click(hudButton('Pause'));
+        await advance(60_000);
+        expect(restClock()).toHaveTextContent(fmt(x.rest - 5));
+        fireEvent.click(hudButton('Resume'));
+        fireEvent.click(hudButton('Skip rest'));
+        expect(within(hud()).queryByRole('timer', { name: 'Rest left' })).toBeNull();
+        await advance(x.rest * 1000);
+        expect(vibrate).not.toHaveBeenCalled();
+      });
+    } finally {
+      Reflect.deleteProperty(navigator, 'vibrate');
+    }
+  });
+
+  it('the rest alert can be switched off', async () => {
+    const vibrate = vi.fn(() => true);
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const { x } = await runWithMultiSet();
+      await underFakeClock(async () => {
+        fireEvent.click(hudButton('Start workout'));
+        fireEvent.click(hudButton('Rest alert: on'));
+        expect(hudButton('Rest alert: off')).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(hudButton('Set done'));
+        await advance(x.rest * 1000 + 500);
+        expect(vibrate).not.toHaveBeenCalled();
+      });
+    } finally {
+      Reflect.deleteProperty(navigator, 'vibrate');
+    }
+  });
+
+  it('on the last set the bar offers Done, next; Next machine moves on at any time', async () => {
+    const { x } = await runWithMultiSet();
+    await underFakeClock(async () => {
+      fireEvent.click(hudButton('Start workout'));
+      for (let s = 1; s < x.sets; s++) {
+        fireEvent.click(hudButton('Set done'));
+        fireEvent.click(hudButton('Skip rest'));
+      }
+      expect(within(hud()).getByText(new RegExp(`set ${x.sets} of ${x.sets}`))).toBeInTheDocument();
+      expect(hudButton('Done, finish')).toBeInTheDocument();
+      expect(within(hud()).queryByRole('button', { name: 'Set done' })).toBeNull();
+    });
+  });
+});
+
+const fmt = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+
+describe('keeping a run across a reload', () => {
+  it('a run in progress comes back paused with its time, step and history id', async () => {
+    const shared = fakeHistory();
+    const first = await runWithTwoItems(shared);
+    await underFakeClock(async () => {
+      fireEvent.click(hudButton('Start workout'));
+      await advance(65_000);
+      fireEvent.click(hudButton('Done, next'));
+      await advance(10_000);
+    });
+    first.unmount();
+
+    mount(shared);
+    await ready();
+    // reopens on the Run tab with the workout paused where it was
+    expect(await screen.findByRole('tab', { name: 'Run ●' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(hud()).getByText(/Paused · step 2 of 2/)).toBeInTheDocument();
+    expect(timer()).toHaveTextContent('01:15');
+    expect(screen.getByText(/Your workout was restored/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Workout restored and paused/).length).toBeGreaterThan(0);
+  });
+
+  it('time while the page was closed is not counted, and the run can be finished and saved', async () => {
+    const shared = fakeHistory();
+    const first = await runWithTwoItems(shared);
+    await underFakeClock(async () => {
+      fireEvent.click(hudButton('Start workout'));
+      await advance(30_000);
+      fireEvent.click(hudButton('Done, next'));
+    });
+    first.unmount();
+    mount(shared);
+    await ready();
+    await screen.findByRole('tab', { name: 'Run ●' });
+    await underFakeClock(async () => {
+      await advance(600_000); // ten minutes pass with the run restored and paused
+      expect(timer()).toHaveTextContent('00:30');
+      fireEvent.click(hudButton('Resume'));
+      await advance(12_000);
+      fireEvent.click(hudButton('Finish'));
+      await advance(50);
+      expect(shared.store).toHaveLength(1);
+      expect(shared.store[0]).toMatchObject({ totalMs: 42_000, doneN: 2 });
+    });
+  });
+
+  it('a finished or reset run is not brought back', async () => {
+    const first = await runWithTwoItems();
+    await underFakeClock(async () => {
+      fireEvent.click(hudButton('Start workout'));
+      await advance(2000);
+      fireEvent.click(screen.getByRole('button', { name: 'End workout' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Tap again to confirm' }));
+      await advance(50);
+    });
+    expect(localStorage.getItem('pt-run')).toBeNull();
+    first.unmount();
+    mount();
+    await ready();
+    expect(screen.queryByRole('tab', { name: 'Run ●' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Zones' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('is stored while running and cleared on reset', async () => {
+    await runWithTwoItems();
+    expect(localStorage.getItem('pt-run')).toBeNull();
+    fireEvent.click(hudButton('Start workout'));
+    await waitFor(() => expect(localStorage.getItem('pt-run')).not.toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tap again to confirm' }));
+    await waitFor(() => expect(localStorage.getItem('pt-run')).toBeNull());
+  });
+
+  it('ignores a corrupted saved run', async () => {
+    localStorage.setItem('pt-run', '{"v":1,"gymId":"g1","run":{"status":"running"}}');
+    mount();
+    await ready();
+    expect(screen.queryByRole('tab', { name: 'Run ●' })).toBeNull();
   });
 });

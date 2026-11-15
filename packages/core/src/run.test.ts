@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import {
   back,
+  completeSet,
   finish,
   fmtClock,
   isActive,
@@ -18,6 +19,8 @@ import {
   reconcile,
   resume,
   runRouteLegs,
+  setProgress,
+  skipRest,
   start,
   stepState,
   tick,
@@ -241,5 +244,102 @@ describe('ending early', () => {
     expect(three.map((i) => stepState(r, i.uid))).toEqual(['done', 'skip', 'skip']);
     expect(finish(r, 9000)).toBe(r); // already finished
     expect(finish(newRun(), 1)).toEqual(newRun());
+  });
+});
+
+describe('sets and rest between sets', () => {
+  const withSets = (uid: string, eid: string, sets: number, rest: number): SessionItem => ({
+    ...item(uid, eid),
+    sets,
+    rest,
+  });
+  const items = [withSets('a', 'm1', 3, 45), withSets('b', 'm2', 1, 60), withSets('c', 'm3', 2, 0)];
+
+  it('reports where the client is within the exercise', () => {
+    const r = start(items, 0);
+    expect(setProgress(r, items)).toEqual({
+      setNo: 1,
+      sets: 3,
+      restSeconds: 45,
+      restLeft: null,
+      lastSet: false,
+    });
+    expect(setProgress(newRun(), items)).toBeNull();
+  });
+
+  it('Set done moves to the next set and starts the rest between them', () => {
+    const r = completeSet(start(items, 0), items, 20_000);
+    expect(r).toMatchObject({ setNo: 2, restLeft: 45_000 });
+    expect(r.total).toBe(20_000);
+  });
+
+  it('the rest counts down only while running, and ends by itself exactly once', () => {
+    let r = completeSet(start(items, 0), items, 0);
+    r = tick(r, 10_000);
+    expect(r.restLeft).toBe(35_000);
+    r = pause(r, 20_000);
+    expect(r.restLeft).toBe(25_000);
+    r = tick(r, 90_000); // paused: nothing moves
+    expect(r.restLeft).toBe(25_000);
+    r = resume(r, 100_000);
+    r = tick(r, 124_000);
+    expect(r).toMatchObject({ restLeft: 1000, restEnds: 0 });
+    r = tick(r, 126_000);
+    expect(r).toMatchObject({ restLeft: null, restEnds: 1 });
+    r = tick(r, 140_000); // no further rest, no further buzz
+    expect(r.restEnds).toBe(1);
+  });
+
+  it('the rest is part of the total time and of the time at the machine', () => {
+    let r = completeSet(start(items, 0), items, 5000);
+    r = tick(r, 50_000);
+    expect(r.total).toBe(50_000);
+    expect(r.steps.a!.ms).toBe(50_000);
+  });
+
+  it('skipping the rest clears it without counting as ended', () => {
+    let r = completeSet(start(items, 0), items, 0);
+    r = skipRest(r, 5000);
+    expect(r).toMatchObject({ restLeft: null, restEnds: 0, setNo: 2 });
+    expect(skipRest(r, 6000)).toBe(r); // nothing to skip
+  });
+
+  it('cannot complete a set while resting, and the last set does nothing (use Done, next)', () => {
+    let r = completeSet(start(items, 0), items, 0);
+    expect(completeSet(r, items, 1000)).toBe(r);
+    r = skipRest(r, 2000);
+    r = completeSet(r, items, 3000); // set 3 of 3
+    expect(r.setNo).toBe(3);
+    r = skipRest(r, 4000);
+    expect(setProgress(r, items)!.lastSet).toBe(true);
+    expect(completeSet(r, items, 5000)).toBe(r);
+    expect(completeSet(newRun(), items, 0)).toEqual(newRun());
+  });
+
+  it('an exercise with no rest time goes straight to the next set', () => {
+    let r = jump(start(items, 0), 'c', 0);
+    r = completeSet(r, items, 1000);
+    expect(r).toMatchObject({ setNo: 2, restLeft: null });
+  });
+
+  it('moving to another step, undoing, or finishing starts again at set 1 with no rest', () => {
+    let r = completeSet(start(items, 0), items, 0);
+    r = next(r, items, 1000);
+    expect(r).toMatchObject({ cur: 'b', setNo: 1, restLeft: null });
+    r = completeSet(jump(r, 'c', 2000), items, 3000);
+    expect(r.setNo).toBe(2);
+    r = back(r, 4000);
+    expect(r).toMatchObject({ cur: 'a', setNo: 1, restLeft: null });
+    r = completeSet(r, items, 5000);
+    expect(finish(r, 6000)).toMatchObject({ status: 'finished', setNo: 1, restLeft: null });
+  });
+
+  it('editing the sets of the current exercise mid-run keeps the set number valid', () => {
+    let r = completeSet(skipRest(completeSet(start(items, 0), items, 0), 1), items, 2); // on set 3
+    r = skipRest(r, 3);
+    const fewer = [withSets('a', 'm1', 2, 45), items[1]!, items[2]!];
+    r = reconcile(r, fewer);
+    expect(r.setNo).toBe(2);
+    expect(setProgress(r, fewer)!.lastSet).toBe(true);
   });
 });

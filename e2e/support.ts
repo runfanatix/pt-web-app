@@ -27,6 +27,18 @@ export const bedfordview = {
   ),
 };
 
+/** A ground-floor machine whose first exercise has several sets and a rest, so the rest countdown applies. */
+const linkedExercises = (eid: string) =>
+  plan.links
+    .filter((l) => l.equipmentId === eid)
+    .map((l) => plan.exercises.find((x) => x.legacyId === l.exerciseLegacyId)!)
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+const multiSetMachine = bedfordview.machinesWithExercises.find((m) => {
+  const x = linkedExercises(m.id)[0]!;
+  return x.sets >= 3 && x.rest >= 20;
+})!;
+export const restMachine = { id: multiSetMachine.id, exercise: linkedExercises(multiSetMachine.id)[0]! };
+
 const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
 function fakeSession() {
   const exp = Math.floor(Date.now() / 1000) + 365 * 24 * 3600;

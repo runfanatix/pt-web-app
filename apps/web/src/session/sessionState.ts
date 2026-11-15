@@ -94,7 +94,8 @@ const StoredSchema = z.object({
     date: z.string(),
     notes: z.string(),
   }),
-  items: z.array(ItemSnapSchema),
+  // uid is kept so a run in progress can still find its steps after a reload (older drafts have none).
+  items: z.array(ItemSnapSchema.extend({ uid: z.string().min(1).optional() })),
 });
 
 const key = (gymId: string) => `pt-session:${gymId}`;
@@ -109,7 +110,10 @@ export function loadDraft(gymId: string): SessionState | null {
     if (!raw) return null;
     const parsed = StoredSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return null;
-    return { meta: parsed.data.meta, items: parsed.data.items.map(fromSnap) };
+    return {
+      meta: parsed.data.meta,
+      items: parsed.data.items.map(({ uid, ...snap }) => ({ ...snap, uid: uid ?? newUid() })),
+    };
   } catch {
     return null;
   }
@@ -119,7 +123,10 @@ export function saveDraft(gymId: string, state: SessionState): void {
   try {
     globalThis.localStorage?.setItem(
       key(gymId),
-      JSON.stringify({ meta: state.meta, items: snapsOf(state.items) }),
+      JSON.stringify({
+        meta: state.meta,
+        items: state.items.map((it) => ({ ...snapsOf([it])[0], uid: it.uid })),
+      }),
     );
   } catch {
     /* storage unavailable or full: the routine simply is not kept across reloads */

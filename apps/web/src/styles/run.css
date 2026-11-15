@@ -158,6 +158,12 @@
 .hud.st-done {
   border-left-color: var(--run-done);
 }
+.hud.st-rest {
+  border-left-color: var(--run-ready);
+}
+.clock.rest b {
+  color: var(--run-ready);
+}
 .clock {
   display: flex;
   flex-direction: column;

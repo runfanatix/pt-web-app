@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { bedfordview, signInWithBedfordview } from './support.ts';
+import { bedfordview, restMachine, signInWithBedfordview } from './support.ts';
 
 const machineA = bedfordview.machinesWithExercises[0]!;
 const machineB = bedfordview.machinesWithExercises[bedfordview.machinesWithExercises.length - 1]!;
@@ -45,7 +45,7 @@ test('start, time, move on and finish: the run is saved to history and shown in 
   await bar.getByRole('button', { name: 'Done, next' }).click();
   await expect(page.locator(`g.mk[data-eq="${machineA.id}"]`)).toHaveClass(/st-done/);
   await page.clock.runFor(30_000);
-  await bar.getByRole('button', { name: 'Done, finish' }).click();
+  await bar.getByRole('button', { name: 'Finish' }).click();
 
   await expect(bar).toContainText('Workout finished');
   await expect(page.locator('.toast')).toContainText('Saved to history');
@@ -97,4 +97,46 @@ test('the run bar and Run tab never scroll the page sideways and controls are 44
     const box = await el.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(43.5);
   }
+});
+
+const clockText = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+test('the rest between sets counts down and ends by itself; it can be skipped', async ({ page }) => {
+  await addFirstExercise(page, { id: restMachine.id });
+  await page.getByRole('tab', { name: /^Run/ }).click();
+  const bar = page.getByRole('region', { name: 'Live workout' });
+  await bar.getByRole('button', { name: 'Start workout' }).click();
+  await expect(bar).toContainText(`set 1 of ${restMachine.exercise.sets}`);
+  await bar.getByRole('button', { name: 'Set done' }).click();
+  await expect(bar).toContainText(`set 2 of ${restMachine.exercise.sets}`);
+  const rest = bar.getByRole('timer', { name: 'Rest left' });
+  await expect(rest).toHaveText(clockText(restMachine.exercise.rest));
+  await page.clock.runFor(10_000);
+  await expect(rest).toHaveText(clockText(restMachine.exercise.rest - 10));
+  await page.clock.runFor(restMachine.exercise.rest * 1000);
+  await expect(rest).toHaveCount(0);
+  await bar.getByRole('button', { name: 'Set done' }).click();
+  await bar.getByRole('button', { name: 'Skip rest' }).click();
+  await expect(rest).toHaveCount(0);
+});
+
+test('a run in progress survives a reload: it returns paused on the Run tab, with its time', async ({
+  page,
+}) => {
+  await readyToRun(page);
+  const bar = page.getByRole('region', { name: 'Live workout' });
+  await bar.getByRole('button', { name: 'Start workout' }).click();
+  await page.clock.runFor(30_000);
+  await bar.getByRole('button', { name: 'Done, next' }).click();
+  await page.clock.runFor(5000);
+  await page.reload();
+  await expect(page.getByRole('tab', { name: 'Run ●' })).toHaveAttribute('aria-selected', 'true');
+  const back = page.getByRole('region', { name: 'Live workout' });
+  await expect(back).toContainText('Paused');
+  await expect(back).toContainText('step 2 of 2');
+  await expect(back.getByRole('timer', { name: 'Total time' })).toHaveText('00:35');
+  await expect(page.getByText(/Your workout was restored/)).toBeVisible();
+  await back.getByRole('button', { name: 'Resume' }).click();
+  await expect(back).not.toContainText('Paused');
 });

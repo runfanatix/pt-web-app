@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import {
   estimateSeconds,
   fmtClock,
   isActive,
   nextUndone,
+  setProgress,
   type Layout,
   type RunState,
   type SessionItem,
 } from '@pt/core';
+import { alertsEnabled, setAlertsEnabled } from '../lib/alerts.ts';
 
 type Equip = Layout['equipment'][number];
 
@@ -21,11 +24,13 @@ interface Props {
   onResume: () => void;
   onBack: () => void;
   onNext: () => void;
+  onCompleteSet: () => void;
+  onSkipRest: () => void;
   onCopyLog: () => void;
   onReset: () => void;
 }
 
-/** The bar above the plan during a run: clocks, the current machine, and the big buttons. */
+/** The bar above the plan during a run: clocks, the current machine and set, the rest countdown, and the big buttons. */
 export function RunHud({
   run,
   items,
@@ -37,9 +42,12 @@ export function RunHud({
   onResume,
   onBack,
   onNext,
+  onCompleteSet,
+  onSkipRest,
   onCopyLog,
   onReset,
 }: Props) {
+  const [alerts, setAlerts] = useState(alertsEnabled);
   const planned = Math.round(estimateSeconds(items) / 60);
   const doneN = run.order.length;
 
@@ -100,22 +108,45 @@ export function RunHud({
   const curMs = run.cur ? (run.steps[run.cur]?.ms ?? 0) : 0;
   const last = !nextUndone(run, items, run.cur);
   const paused = run.status === 'paused';
+  const sp = setProgress(run, items);
+  const resting = run.restLeft !== null;
+  const multiSet = !!sp && sp.sets > 1;
+
   return (
-    <div className="hud st-now" role="region" aria-label="Live workout">
+    <div className={`hud ${resting ? 'st-rest' : 'st-now'}`} role="region" aria-label="Live workout">
       <div className="clock">
         <span className="lab">Total</span>
-        <b role="timer">{fmtClock(run.total)}</b>
+        <b role="timer" aria-label="Total time">
+          {fmtClock(run.total)}
+        </b>
       </div>
-      <div className="clock">
-        <span className="lab">At machine</span>
-        <b>{fmtClock(curMs)}</b>
-      </div>
+      {resting ? (
+        <div className="clock rest">
+          <span className="lab">Rest</span>
+          <b role="timer" aria-label="Rest left">
+            {fmtClock(run.restLeft ?? 0)}
+          </b>
+        </div>
+      ) : (
+        <div className="clock">
+          <span className="lab">At machine</span>
+          <b>{fmtClock(curMs)}</b>
+        </div>
+      )}
       <div className="hudnow">
         <span className="lab">
-          {paused ? 'Paused' : 'Now'} · step {Math.min(doneN + 1, items.length)} of {items.length}
+          {paused ? 'Paused' : resting ? 'Rest' : 'Now'} · step {Math.min(doneN + 1, items.length)} of{' '}
+          {items.length}
+          {multiSet && sp ? ` · set ${sp.setNo} of ${sp.sets}` : ''}
         </span>
         <strong>{e ? e.name : 'Machine'}</strong>
-        <span className="sub">{it ? `${it.exercise} · ${it.sets} x ${it.reps}` : ''}</span>
+        <span className="sub">
+          {resting && sp
+            ? `Rest, then set ${sp.setNo} of ${sp.sets}`
+            : it
+              ? `${it.exercise} · ${it.sets} x ${it.reps}`
+              : ''}
+        </span>
       </div>
       <div className="hudbtns">
         <button type="button" className="btn big" onClick={paused ? onResume : onPause}>
@@ -124,8 +155,35 @@ export function RunHud({
         <button type="button" className="btn big" disabled={!doneN} onClick={onBack}>
           Back
         </button>
-        <button type="button" className="btn now big" onClick={onNext} disabled={!isActive(run)}>
-          {last ? 'Done, finish' : 'Done, next'}
+        {resting ? (
+          <button type="button" className="btn now big" onClick={onSkipRest}>
+            Skip rest
+          </button>
+        ) : multiSet && sp && !sp.lastSet ? (
+          <button type="button" className="btn now big" onClick={onCompleteSet}>
+            Set done
+          </button>
+        ) : (
+          <button type="button" className="btn now big" onClick={onNext} disabled={!isActive(run)}>
+            {last ? 'Done, finish' : 'Done, next'}
+          </button>
+        )}
+        {multiSet && sp && (resting || !sp.lastSet) && (
+          <button type="button" className="btn big" onClick={onNext}>
+            {last ? 'Finish' : 'Next machine'}
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn sm"
+          aria-pressed={alerts}
+          title="Vibrate and beep when a rest ends"
+          onClick={() => {
+            setAlerts(!alerts);
+            setAlertsEnabled(!alerts);
+          }}
+        >
+          Rest alert: {alerts ? 'on' : 'off'}
         </button>
       </div>
     </div>
