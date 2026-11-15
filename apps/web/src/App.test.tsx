@@ -3,11 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { PRIVACY_NOTICE_VERSION } from '@pt/core';
 import { App } from './App.tsx';
+import { bedfordviewFloorRows } from './test-utils.ts';
 
 interface FakeOptions {
   session?: Session | null;
   gyms?: unknown[];
   gymsError?: string;
+  floors?: unknown[];
+  floorsError?: string;
 }
 
 /** Minimal stand-in for the Supabase client: just the calls the app makes. */
@@ -22,6 +25,13 @@ function fakeClient(opts: FakeOptions = {}) {
         ? { data: null, error: { message: opts.gymsError } }
         : { data: opts.gyms ?? [], error: null },
     );
+  const floorsOrder = vi
+    .fn()
+    .mockResolvedValue(
+      opts.floorsError
+        ? { data: null, error: { message: opts.floorsError } }
+        : { data: opts.floors ?? [], error: null },
+    );
   const client = {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: opts.session ?? null } }),
@@ -30,7 +40,11 @@ function fakeClient(opts: FakeOptions = {}) {
       signInWithPassword,
       signOut,
     },
-    from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ order }) }),
+    from: vi.fn((table: string) =>
+      table === 'gyms'
+        ? { select: vi.fn().mockReturnValue({ order }) }
+        : { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: floorsOrder }) }) },
+    ),
   };
   return { client: client as unknown as SupabaseClient, signUp, signInWithPassword, signOut };
 }
@@ -123,6 +137,30 @@ describe('App', () => {
     const { client } = fakeClient({ session, gyms: [{ id: 'g1' }] });
     render(<App client={client} />);
     expect(await screen.findByText(/Could not load your gyms/)).toBeInTheDocument();
+  });
+
+  it('draws the floor plan read from the database (one nested query, validated)', async () => {
+    const { client } = fakeClient({ session, gyms: [gym], floors: bedfordviewFloorRows() });
+    const { container } = render(<App client={client} />);
+    expect(
+      await screen.findByRole('group', { name: 'Floor plan with training zones and equipment' }),
+    ).toBeInTheDocument();
+    expect(client.from).toHaveBeenCalledWith('floors');
+    expect(container.querySelectorAll('g.zone').length).toBeGreaterThan(0);
+    expect(screen.getByRole('group', { name: 'Floors' })).toBeInTheDocument();
+  });
+
+  it('reports a floor-plan error without losing the rest of the page', async () => {
+    const { client } = fakeClient({
+      session,
+      gyms: [gym],
+      floorsError: 'permission denied for table floors',
+    });
+    render(<App client={client} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load the floor plan: permission denied',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Bedfordview Zone Planner' })).toBeInTheDocument();
   });
 
   it('signs out', async () => {

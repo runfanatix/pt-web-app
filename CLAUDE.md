@@ -72,7 +72,7 @@ README.md                     handoff package overview
 docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script, 06 Supabase setup, 07 privacy and POPIA
 prototype/                    FROZEN reference (zone-planner-v11.html + Playwright scenarios). Never edit.
 apps/web/                     React + Vite + TypeScript app (shell only so far)
-packages/core/                pure TypeScript: Zod schemas, importer, built-in library seed (geometry, remap, route order, snapshot come in later phases)
+packages/core/                pure TypeScript: Zod schemas, importer, built-in library seed, floor-plan geometry, row-to-layout mapper (remap, route order, snapshot come in later phases)
 packages/db/                  tests that run the real SQL migrations in an in-process Postgres (PGlite): RLS isolation, importer, library seed
 scripts/                      CLI scripts: import-prototype.ts, seed-library.ts (both need the Supabase service role key; both have --dry-run)
 supabase/migrations/          SQL: schema and row-level security (apply in filename order; see docs/06-supabase-setup.md)
@@ -83,12 +83,12 @@ Nicks tools/                  library of Nick Saraev's skills/templates; copy fr
 design-reference/             external DESIGN.md collection (gitignored, read-only)
 ```
 
-Current status: **Phase 0 (scaffold) and Phase 1 (domain and data) are built.** Phase 1: Zod schemas, SQL schema with RLS, auth (sign in and sign up with required privacy-notice acceptance), the app reads the signed-in trainer's gym from Supabase, importer and built-in library scripts. Everything is tested against an in-process Postgres; **it has not yet been run against a real Supabase project**: the owner creates the free project (docs/06-supabase-setup.md) and then does the manual isolation check. Costs: owner pays, free tiers until paying customers. Privacy: notice and consent flow required at launch, see docs/07-privacy-popia.md (notice wording is a placeholder). Next is **Phase 2** (read-only floor plan).
+Current status: **Phases 0, 1 and 2 are built.** Phase 1: Zod schemas, SQL schema with RLS, auth with required privacy-notice acceptance, importer and library scripts. Phase 2 (read-only floor plan): the app reads the open gym's floors, zones, joined-zone parts, structures and machines in one Supabase query (`FLOORS_SELECT`, validated by `layoutFromFloorRows`) and draws them as SVG, with floor tabs, muscle-focus dimming, zone labels and the legend. Geometry lives in `packages/core/src/geometry.ts` and is tested against the prototype's own functions. Everything is tested against an in-process Postgres and a mocked Supabase API; **it has not yet been run against a real Supabase project** (owner creates the free project, docs/06-supabase-setup.md, then does the manual isolation check). Hosting: owner pays, free tiers until paying customers; Supabase has no African region, so use the nearest EU region (docs/07-privacy-popia.md, "Hosting outside South Africa"). Privacy notice and consent flow are required at launch (notice wording is a placeholder). Deliberately not in Phase 2: machine pop-ups, session numbers and route lines (Phase 3), the "illustrative layout" notice (the real app has no built-in gym). Next is **Phase 3** (session builder).
 
 ## Commands (run from the repo root; needs Node 20+ and pnpm 12, `npm i -g pnpm`)
 
 - `pnpm install` then `pnpm dev` (http://localhost:5173); `pnpm build`; `pnpm lint`; `pnpm format:check` (`pnpm format` to fix); `pnpm typecheck`
-- `pnpm test` Vitest (core: importer, schemas, library; db: RLS and importer on real SQL; web: components); `pnpm e2e` Playwright (builds with a dummy Supabase URL and tests the signed-out screens on :4173; first time run `pnpm exec playwright install chromium`)
+- `pnpm test` Vitest (core: importer, schemas, library; db: RLS and importer on real SQL; web: components); `pnpm e2e` Playwright (builds with a dummy Supabase URL on :4173; signed-out screens, plus the signed-in planner against a mocked Supabase API serving the real Bedfordview export; set `SHOTS_DIR` to save screenshots for comparing with the prototype; first time run `pnpm exec playwright install chromium`)
 - Handoff files `packages/core/src/import-prototype*.ts` and `scripts/import-prototype.ts` are deliberately excluded from Prettier; ESLint ignores unused caught errors for them. The tsconfig does not use `noUncheckedIndexedAccess` because the tested importer predates it.
 - `npx tsx scripts/import-prototype.ts --file exports/bedfordview-v11.json --trainer <id> --dry-run` (expect 14 zones, 41 machines)
 

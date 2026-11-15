@@ -8,8 +8,11 @@ data in the free project until you have upgraded and checked the backup options 
 ## 1. Create the project
 
 1. Sign in at supabase.com and create a new project.
-2. **Region**: choose South Africa (Cape Town) if it is offered. Keeping data in South Africa is the simplest
-   answer to POPIA's cross-border transfer rules (see `07-privacy-popia.md`).
+2. **Region**: Supabase has no South African region (none in Africa). Pick the closest **EU** region on the list
+   (London or Frankfurt; expect roughly 150 to 200 ms per request from Johannesburg). POPIA does not require data to stay
+   in South Africa; it regulates transfers abroad (section 72). Record the region you chose and the basis for the transfer
+   in the privacy notice; see `07-privacy-popia.md`, "Hosting outside South Africa". The region cannot be changed after the
+   project is created (you would migrate to a new project), so decide before loading real data.
 3. Save the database password in a password manager.
 
 ## 2. Create the tables and security rules

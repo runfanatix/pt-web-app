@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
 import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
+import { createLayoutLoader } from './data/useLayout.ts';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
 
@@ -31,9 +33,10 @@ function Status({ children }: { children: string }) {
 function SignedIn() {
   const { client, signOut } = useAuth();
   const state = useGyms(client);
+  const loadLayout = useMemo(() => createLayoutLoader(client), [client]);
   if (state.status === 'loading') return <Status>Loading your gyms…</Status>;
   if (state.status === 'error') return <Status>{`Could not load your gyms: ${state.message}`}</Status>;
-  return <Planner gyms={state.gyms} onSignOut={() => void signOut()} />;
+  return <Planner gyms={state.gyms} loadLayout={loadLayout} onSignOut={() => void signOut()} />;
 }
 
 function Gate() {

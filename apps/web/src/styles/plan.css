@@ -1,0 +1,280 @@
+/* Floor plan styles ported from prototype/zone-planner-v11.html (zones, markers, architecture, chips, legend). */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.chips .lab {
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 4px;
+}
+.chip {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 3px 11px;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.chip[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+#map {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.zone rect,
+.zone path.zp {
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  cursor: pointer;
+}
+.zone.cat-cardio rect,
+.zone.cat-cardio path.zp {
+  fill: var(--z-cardio);
+}
+.zone.cat-strength rect,
+.zone.cat-strength path.zp {
+  fill: var(--z-strength);
+}
+.zone.cat-functional rect,
+.zone.cat-functional path.zp {
+  fill: var(--z-functional);
+}
+.zone.cat-studio rect,
+.zone.cat-studio path.zp {
+  fill: var(--z-studio);
+}
+.zone.cat-water rect,
+.zone.cat-water path.zp {
+  fill: var(--z-water);
+}
+.zone.cat-amenity rect,
+.zone.cat-amenity path.zp {
+  fill: var(--z-amenity);
+}
+.zone.cat-outdoor rect,
+.zone.cat-outdoor path.zp {
+  fill: var(--z-outdoor);
+  stroke-dasharray: 6 4;
+}
+.zone:hover rect,
+.zone:hover path.zp {
+  stroke: var(--ink);
+}
+.zone.sel rect,
+.zone.sel path.zp {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.zone:focus {
+  outline: none;
+}
+.zone:focus-visible rect,
+.zone:focus-visible path.zp {
+  stroke: var(--focus);
+  stroke-width: 3;
+}
+.zl {
+  font: 500 12px var(--f-mono);
+  letter-spacing: 0.06em;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.zc {
+  font: 400 10.5px var(--f-mono);
+  fill: var(--muted);
+  pointer-events: none;
+  text-anchor: end;
+}
+.emptyfloor {
+  font: 500 13px var(--f-body);
+  fill: var(--muted);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* equipment markers */
+.mk {
+  cursor: pointer;
+}
+.mk .body {
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 2;
+}
+.mk .gl {
+  fill: var(--bg);
+  font: 600 11px var(--f-mono);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.mk.sel .body {
+  fill: var(--accent);
+}
+.mk.sel .gl {
+  fill: var(--accent-ink);
+}
+.mk.dim {
+  opacity: 0.2;
+}
+.mk:focus {
+  outline: none;
+}
+.mk:focus-visible .body {
+  stroke: var(--focus);
+  stroke-width: 3.5;
+}
+.ml {
+  display: none;
+  font: 500 11px var(--f-body);
+  fill: var(--ink);
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.mk.lab .ml,
+.mk:hover .ml,
+.mk:focus .ml {
+  display: block;
+}
+
+/* architecture */
+.sa-wall {
+  stroke: var(--wall);
+  stroke-width: 6;
+  stroke-linecap: square;
+  fill: none;
+}
+.sa-glass-band {
+  stroke: var(--glass);
+  stroke-width: 8;
+  opacity: 0.26;
+  stroke-linecap: butt;
+}
+.sa-glass {
+  stroke: var(--glass);
+  stroke-width: 2.2;
+  stroke-linecap: butt;
+}
+.sa-bal,
+.sa-balp {
+  stroke: var(--wall);
+  stroke-width: 1.8;
+}
+.sa-box {
+  fill: var(--surface);
+  stroke: var(--wall);
+  stroke-width: 2;
+}
+.sa-step {
+  stroke: var(--wall);
+  stroke-width: 1;
+  opacity: 0.75;
+}
+.sa-wc {
+  font: 600 11px var(--f-mono);
+  fill: var(--wall);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.sa-lab {
+  font: 500 9.5px var(--f-mono);
+  letter-spacing: 0.08em;
+  fill: var(--muted);
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.sa-cut {
+  stroke: var(--paper);
+  stroke-width: 8;
+}
+.sa-door {
+  stroke: var(--wall);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+.sa-arc {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+.sa-gleaf {
+  stroke: var(--glass);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.sa-garc {
+  fill: none;
+  stroke: var(--glass);
+  stroke-width: 1.1;
+  stroke-dasharray: 3 3;
+}
+.sa-rev {
+  fill: var(--paper);
+  stroke: var(--glass);
+  stroke-width: 2.2;
+}
+.sa-blade {
+  stroke: var(--glass);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.sa-col {
+  fill: var(--wall);
+  stroke: var(--paper);
+  stroke-width: 1;
+}
+.st {
+  pointer-events: none;
+}
+
+/* legend */
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dot {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--bg);
+  font: 600 10px var(--f-mono);
+}

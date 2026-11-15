@@ -43,7 +43,7 @@
 4. Equipment catalogue: who supplies the Technogym and Eleiko item list, codes and images, and under what licence?
 5. Should exercise-to-machine links be copied from one gym to another by name when a gym is created?
 6. Branding: product name, colours and logo for the real app (the prototype is named after Bedfordview only).
-7. **Answered (2026-11-15):** a privacy notice and consent flow are required at launch. Hosting region still to confirm (prefer Cape Town). Built and outstanding items: `docs/07-privacy-popia.md`. The notice wording must come from the owner.
+7. **Answered (2026-11-15):** a privacy notice and consent flow are required at launch. Hosting region: Supabase has no African region, so use the nearest EU region (London or Frankfurt) and document the POPIA section 72 basis. Built and outstanding items: `docs/07-privacy-popia.md`. The notice wording must come from the owner.
 8. Which payments and calendar providers for the later platform modules?
 
 ## What the prototype does not have (candidate backlog)

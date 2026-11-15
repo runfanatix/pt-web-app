@@ -35,13 +35,29 @@ terms reviewed by someone qualified in South African data-protection law before 
    `PRIVACY_NOTICE_VERSION` whenever the text changes, and ask existing users to accept the new version.
 4. **Retention**: decide how long run history and ended clients are kept.
 
+## Hosting outside South Africa
+
+Supabase offers no African region, so client data will be stored in the EU (London or Frankfurt). This is allowed, but POPIA
+section 72 conditions it. The usual routes, to be confirmed by your adviser:
+
+1. The recipient is subject to a law, binding rules or an agreement that gives substantially similar protection. EU data
+   protection law (GDPR) is the argument usually made, backed by the data processing agreement and standard contractual
+   clauses that Supabase and Vercel offer; sign and keep them.
+2. The data subject consents to the transfer. The sign-up and client consent wording should name the hosting country.
+3. The transfer is necessary to perform the contract with the client.
+
+Build choices that reduce the exposure: collect only what the product needs (no ID numbers, no medical records, keep health
+detail to what the trainer needs), keep private notes free text the trainer controls, and keep the privacy notice honest
+about where data is held. If a South African region is ever a hard requirement, the alternatives are self-hosting Supabase
+on a South African server (AWS Cape Town, or a local host) at the cost of running it yourself, or asking Supabase whether a
+region is planned.
+
 ## The owner must supply or decide
 
 1. The privacy notice text and, for the trainer's clients, the client-facing consent wording. The checkbox text in
    `AuthScreen.tsx` is a placeholder.
 2. Who is the responsible party for client data (normally the trainer or their business) and who is the operator
    (the app provider). This decides whose Information Officer registration and agreements apply.
-3. Written operator agreements with Supabase and Vercel, and where data is stored. Choose the Cape Town region for
-   Supabase if offered; otherwise note the cross-border transfer basis (POPIA section 72).
+3. Written operator agreements with Supabase and Vercel, and where data is stored. Supabase has no South African region, so name the EU region and the section 72 basis (see "Hosting outside South Africa").
 4. Security safeguards and a breach procedure (notify the Information Regulator and affected people).
 5. Do not store real client data in the free-tier project until the backup and hosting terms are acceptable.

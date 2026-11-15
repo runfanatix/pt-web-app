@@ -2,17 +2,26 @@ import { useState } from 'react';
 import type { GymSummary } from '@pt/core';
 import { TABS, type Mode, type TabId } from './tabs.ts';
 import { GymBar } from './components/GymBar.tsx';
+import { FloorPlan } from './components/FloorPlan.tsx';
+import { FloorTabs, Legend, MuscleChips } from './components/PlanControls.tsx';
+import { useLayout, type LayoutLoader } from './data/useLayout.ts';
 
 interface Props {
   gyms: GymSummary[];
+  loadLayout: LayoutLoader;
   onSignOut: () => void;
 }
 
-export function Planner({ gyms, onSignOut }: Props) {
+export function Planner({ gyms, loadLayout, onSignOut }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
   const [tab, setTab] = useState<TabId>('zone');
   const [gymId, setGymId] = useState(gyms[0]?.id ?? '');
+  const [floorId, setFloorId] = useState<string | null>(null);
+  const [filter, setFilter] = useState('all');
+  const [selZone, setSelZone] = useState<string | null>(null);
+  const [selEq, setSelEq] = useState<string | null>(null);
   const gym = gyms.find((g) => g.id === gymId) ?? gyms[0];
+  const layoutState = useLayout(loadLayout, gym?.id ?? null);
 
   if (!gym) {
     return (
@@ -30,7 +39,27 @@ export function Planner({ gyms, onSignOut }: Props) {
     );
   }
 
+  function changeGym(id: string) {
+    setGymId(id);
+    setFloorId(null);
+    setFilter('all');
+    setSelZone(null);
+    setSelEq(null);
+  }
+  function changeFloor(id: string) {
+    setFloorId(id);
+    setSelZone(null);
+    setSelEq(null);
+  }
+
   const name = [gym.name, gym.branch].filter(Boolean).join(' ');
+  const layout = layoutState.status === 'ready' ? layoutState.layout : null;
+  const activeFloor = layout ? (layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!) : null;
+  const hint =
+    mode === 'edit'
+      ? 'Layout editing arrives in a later phase. For now the plan is read-only.'
+      : 'Click a zone to label all of its equipment. Pick a muscle to highlight the machines that train it.';
+
   return (
     <div className="wrap">
       <header className="top">
@@ -56,13 +85,39 @@ export function Planner({ gyms, onSignOut }: Props) {
         </div>
       </header>
 
-      <GymBar gyms={gyms} gymId={gym.id} onChange={setGymId} />
+      <GymBar gyms={gyms} gymId={gym.id} onChange={changeGym} />
 
       <main className="grid">
         <section className="mapcol" aria-label="Gym floor map">
+          {layout && activeFloor && (
+            <>
+              <FloorTabs floors={layout.floors} floorId={activeFloor.id} onChange={changeFloor} />
+              <MuscleChips filter={filter} onChange={setFilter} />
+            </>
+          )}
           <div className="mapscroll">
-            <div className="map-placeholder">Floor plan arrives in Phase 2</div>
+            {layoutState.status === 'loading' && (
+              <div className="map-placeholder">Loading the floor plan…</div>
+            )}
+            {layoutState.status === 'error' && (
+              <div className="map-placeholder" role="alert">
+                {`Could not load the floor plan: ${layoutState.message}`}
+              </div>
+            )}
+            {layout && activeFloor && (
+              <FloorPlan
+                layout={layout}
+                floorId={activeFloor.id}
+                filter={filter}
+                selZone={selZone}
+                selEq={selEq}
+                onSelectZone={setSelZone}
+                onSelectEq={setSelEq}
+              />
+            )}
           </div>
+          <Legend />
+          <p className="hint">{hint}</p>
         </section>
         <aside className="panel" aria-label="Planner panel">
           <div className="tabs" role="tablist">
