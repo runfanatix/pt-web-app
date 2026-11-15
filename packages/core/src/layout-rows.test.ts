@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { floorRowsFromPlan, layoutFromFloorRows } from './layout-rows.ts';
+import {
+  exerciseRowsFromPlan,
+  floorRowsFromPlan,
+  gymDataFromRows,
+  layoutFromFloorRows,
+} from './layout-rows.ts';
 import { planPrototypeImport } from './import-prototype.ts';
 
 const exportJson: unknown = JSON.parse(
@@ -58,5 +63,28 @@ describe('layoutFromFloorRows', () => {
     const rows = nestedRows();
     rows[0]!.zones[0]!.category = 'pool';
     expect(() => layoutFromFloorRows(rows)).toThrow();
+  });
+});
+
+describe('gymDataFromRows (layout plus exercise library)', () => {
+  const { plan } = planPrototypeImport(exportJson, { trainerId: 'trainer-1' });
+
+  it('gives every exercise its machines at this gym: 111 exercises, 139 links', () => {
+    const data = gymDataFromRows(floorRowsFromPlan(plan), exerciseRowsFromPlan(plan));
+    expect(data.library).toHaveLength(111);
+    expect(data.library.reduce((n, x) => n + x.equipmentIds.length, 0)).toBe(139);
+    const machineIds = new Set(data.layout.equipment.map((e) => e.id));
+    expect(data.library.every((x) => x.equipmentIds.every((id) => machineIds.has(id)))).toBe(true);
+  });
+
+  it('exercises with no machine here have an empty list', () => {
+    const rows = floorRowsFromPlan(plan);
+    rows.forEach((f) => f.zones.forEach((z) => z.equipment.forEach((e) => (e.exercise_equipment = []))));
+    const data = gymDataFromRows(rows, exerciseRowsFromPlan(plan));
+    expect(data.library.every((x) => x.equipmentIds.length === 0)).toBe(true);
+  });
+
+  it('rejects malformed exercise rows', () => {
+    expect(() => gymDataFromRows(floorRowsFromPlan(plan), [{ id: 'x' }])).toThrow();
   });
 });

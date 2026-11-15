@@ -10,10 +10,13 @@ interface Floor {
 export function FloorTabs({
   floors,
   floorId,
+  counts = {},
   onChange,
 }: {
   floors: Floor[];
   floorId: string;
+  /** Exercises in the session on each floor, shown as a badge. */
+  counts?: Record<string, number>;
   onChange: (id: string) => void;
 }) {
   if (floors.length < 2) return null;
@@ -29,6 +32,11 @@ export function FloorTabs({
           onClick={() => onChange(f.id)}
         >
           {f.name || 'Floor'}
+          {counts[f.id] ? (
+            <span className="fcount" title="Exercises on this floor">
+              {counts[f.id]}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>

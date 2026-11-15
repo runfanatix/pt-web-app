@@ -3,13 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { PRIVACY_NOTICE_VERSION } from '@pt/core';
 import { App } from './App.tsx';
-import { bedfordviewFloorRows } from './test-utils.ts';
+import { bedfordviewExerciseRows, bedfordviewFloorRows } from './test-utils.ts';
 
 interface FakeOptions {
   session?: Session | null;
   gyms?: unknown[];
   gymsError?: string;
   floors?: unknown[];
+  exercises?: unknown[];
   floorsError?: string;
 }
 
@@ -40,11 +41,27 @@ function fakeClient(opts: FakeOptions = {}) {
       signInWithPassword,
       signOut,
     },
-    from: vi.fn((table: string) =>
-      table === 'gyms'
-        ? { select: vi.fn().mockReturnValue({ order }) }
-        : { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: floorsOrder }) }) },
-    ),
+    from: vi.fn((table: string) => {
+      const ok = (data: unknown) => Promise.resolve({ data, error: null });
+      switch (table) {
+        case 'gyms':
+          return { select: vi.fn().mockReturnValue({ order }) };
+        case 'floors':
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: floorsOrder }) }) };
+        case 'exercises':
+          return { select: vi.fn().mockReturnValue({ order: vi.fn(() => ok(opts.exercises ?? [])) }) };
+        case 'trainers':
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({ maybeSingle: vi.fn(() => ok({ id: 'trainer-1' })) }),
+            }),
+          };
+        case 'templates':
+          return { select: vi.fn().mockReturnValue({ order: vi.fn(() => ok([])) }) };
+        default:
+          throw new Error('unexpected table ' + table);
+      }
+    }),
   };
   return { client: client as unknown as SupabaseClient, signUp, signInWithPassword, signOut };
 }
@@ -140,12 +157,19 @@ describe('App', () => {
   });
 
   it('draws the floor plan read from the database (one nested query, validated)', async () => {
-    const { client } = fakeClient({ session, gyms: [gym], floors: bedfordviewFloorRows() });
+    const { client } = fakeClient({
+      session,
+      gyms: [gym],
+      floors: bedfordviewFloorRows(),
+      exercises: bedfordviewExerciseRows(),
+    });
     const { container } = render(<App client={client} />);
     expect(
       await screen.findByRole('group', { name: 'Floor plan with training zones and equipment' }),
     ).toBeInTheDocument();
     expect(client.from).toHaveBeenCalledWith('floors');
+    expect(client.from).toHaveBeenCalledWith('exercises');
+    expect(client.from).toHaveBeenCalledWith('trainers');
     expect(container.querySelectorAll('g.zone').length).toBeGreaterThan(0);
     expect(screen.getByRole('group', { name: 'Floors' })).toBeInTheDocument();
   });

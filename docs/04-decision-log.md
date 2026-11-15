@@ -50,3 +50,13 @@
 
 Real accounts, offline mode, exercise images or videos, progression tracking over time, body metrics, client
 notifications, calendar and bookings, invoicing and payments, trainer analytics, multi-trainer roles.
+
+## Phase 3 decisions (session builder)
+
+- **Pop-up**: tapping a machine opens a floating card by the marker, or a bottom sheet at 640 px and below. Escape or the close button closes it; tapping the same machine again also closes it. The Zones tab offers the same "add an exercise" action as a list, for keyboard, screen-reader and small-screen use.
+- **Reordering** uses the up and down buttons and the grip's arrow keys. Dragging the grip with a finger or mouse is **not built yet** (candidate for a later polish pass).
+- **Free-text fields** (exercise, reps, coach note) are text inputs with suggestion lists instead of the prototype's "pick or choose Other" dropdowns; sets and rest are number inputs (sets at least 1, rest at least 0).
+- **Library link follows the name**: choosing a linked exercise's name keeps its library id (used for the cue and for remapping); typing a different name makes it a free exercise.
+- **Draft**: the unsent routine (items, session name, coach, date, notes, guest name) is kept in this browser per gym, so a reload does not lose it. It holds no client records.
+- **Templates** are stored per trainer with the gym they were made at (tables `templates` and `template_items`), saved under a name (same name updates it), listed with Load, Add to session and a two-tap Delete. Loading remaps machines onto the open gym: same machine, then same name and type, then a machine the exercise is linked to; the toast says how many moved and how many were skipped. Items whose machine was deleted keep their exercise and can still remap by exercise link.
+- **Not in Phase 3**: saved clients, assigning programmes, PDF, WhatsApp and email sharing and the client link (all Phase 5); the live run (Phase 4). The Session tab has a free-typed "guest name" until clients exist.

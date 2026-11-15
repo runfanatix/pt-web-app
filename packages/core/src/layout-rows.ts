@@ -7,11 +7,13 @@
  */
 import { z } from 'zod';
 import type { ImportPlan } from './import-prototype.ts';
+import type { LibraryExercise } from './session.ts';
 import { LayoutSchema, type Layout } from './schemas.ts';
 
 export const FLOORS_SELECT =
   'id, name, w, h, position,' +
-  ' zones(id, name, category, x, y, w, h, zone_parts(x, y, w, h, position), equipment(id, name, type, x, y, muscles, notes)),' +
+  ' zones(id, name, category, x, y, w, h, zone_parts(x, y, w, h, position),' +
+  '   equipment(id, name, type, x, y, muscles, notes, exercise_equipment(exercise_id))),' +
   ' structs(id, type, x, y, w, h, x2, y2, rotation, label, shared)';
 
 // Postgres `numeric` can arrive as a number or a string depending on the client, so coerce.
@@ -26,6 +28,7 @@ const EquipmentRowSchema = z.object({
   y: n,
   muscles: z.array(z.string()),
   notes: z.string(),
+  exercise_equipment: z.array(z.object({ exercise_id: z.string() })).default([]),
 });
 const PartRowSchema = z.object({ x: n, y: n, w: n, h: n, position: z.number() });
 const ZoneRowSchema = z.object({
@@ -149,8 +152,68 @@ export function floorRowsFromPlan(plan: ImportPlan): FloorTreeRow[] {
         w: z.w,
         h: z.h,
         zone_parts: plan.zoneParts.filter((p) => p.zone_id === z.id),
-        equipment: plan.equipment.filter((e) => e.zone_id === z.id),
+        equipment: plan.equipment
+          .filter((e) => e.zone_id === z.id)
+          .map((e) => ({
+            ...e,
+            exercise_equipment: plan.links
+              .filter((l) => l.equipmentId === e.id)
+              .map((l) => ({ exercise_id: l.exerciseLegacyId })),
+          })),
       })),
     structs: plan.structs.filter((s) => s.floor_id === f.id),
   }));
+}
+
+export const EXERCISES_SELECT = 'id, name, muscles, level, sets, reps, rest, cue';
+
+const ExerciseRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  muscles: z.array(z.string()),
+  level: z.string(),
+  sets: z.number(),
+  reps: z.string(),
+  rest: z.number(),
+  cue: z.string(),
+});
+export type ExerciseTreeRow = z.infer<typeof ExerciseRowSchema>;
+
+/** Exercise rows as the app reads them, built from an import plan (ids are the prototype's legacy ids). */
+export function exerciseRowsFromPlan(plan: ImportPlan): ExerciseTreeRow[] {
+  return plan.exercises.map((x) => ({
+    id: x.legacyId,
+    name: x.name,
+    muscles: x.muscles,
+    level: x.level,
+    sets: x.sets,
+    reps: x.reps,
+    rest: x.rest,
+    cue: x.cue,
+  }));
+}
+
+/**
+ * The exercise library with each exercise's machines at this gym. Links are per gym (machine ids differ between
+ * gyms), so only machines of the supplied floors count.
+ */
+export function libraryFromRows(exerciseRows: unknown, floorRows: unknown): LibraryExercise[] {
+  const exercises = ExerciseRowSchema.array().parse(exerciseRows);
+  const floors = FloorTreeSchema.array().parse(floorRows);
+  const machines = new Map<string, string[]>();
+  for (const f of floors)
+    for (const z of f.zones)
+      for (const e of z.equipment)
+        for (const l of e.exercise_equipment)
+          (machines.get(l.exercise_id) ?? machines.set(l.exercise_id, []).get(l.exercise_id)!).push(e.id);
+  return exercises.map((x) => ({ ...x, equipmentIds: machines.get(x.id) ?? [] }));
+}
+
+export interface GymData {
+  layout: Layout;
+  library: LibraryExercise[];
+}
+
+export function gymDataFromRows(floorRows: unknown, exerciseRows: unknown): GymData {
+  return { layout: layoutFromFloorRows(floorRows), library: libraryFromRows(exerciseRows, floorRows) };
 }
