@@ -13,6 +13,7 @@
   "dependencies": {
     "@pt/core": "workspace:*",
     "@supabase/supabase-js": "^2.119.0",
+    "jspdf": "^2.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zod": "^3.25.76"

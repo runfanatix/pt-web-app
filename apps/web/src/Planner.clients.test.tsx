@@ -10,6 +10,7 @@ import {
 } from '@pt/core';
 import { Planner } from './Planner.tsx';
 import type { ClientsApi, ConsentInput, DataRequest, ProfileApi, RequestKind } from './data/clients.ts';
+import type { ShareApi, ShareLink } from './data/share.ts';
 import { bedfordviewData } from './test-utils.ts';
 
 const data = bedfordviewData();
@@ -602,5 +603,113 @@ describe('programmes and the session', () => {
     expect(within(list).getByText(/consent pending/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Search clients'), { target: { value: 'zed' } });
     expect(within(screen.getByRole('list', { name: 'Clients' })).getAllByRole('listitem')).toHaveLength(1);
+  });
+});
+
+describe('sending and sharing from the app', () => {
+  const ground = data.layout.floors[0]!;
+  const machine = data.layout.equipment.find(
+    (e) => e.floor === ground.id && exercisesFor(library, e.id).length > 0,
+  )!;
+  const x = exercisesFor(library, machine.id)[0]!;
+
+  const programmeFor = (): ClientRecord => {
+    const r = record({ whatsapp: '082 111 2222', email: 'carla@example.com' });
+    r.programmes.push({
+      id: 'p1',
+      title: 'Starter',
+      notes: 'Easy',
+      assignedAt: '2026-11-09T08:00:00Z',
+      gymId: 'g1',
+      items: [{ eid: machine.id, xid: x.id, exercise: x.name, sets: 3, reps: '10', rest: 60, note: '' }],
+    });
+    return r;
+  };
+
+  it('a programme can be shared from the client’s profile: a link, WhatsApp to their saved number, and a PDF', async () => {
+    const links: ShareLink[] = [];
+    const share: ShareApi = {
+      list: vi.fn(async () => links.slice()),
+      create: vi.fn(async () => {
+        const l = {
+          token: 'd'.repeat(64),
+          createdAt: new Date().toISOString(),
+          expiresAt: null,
+          revokedAt: null,
+        };
+        links.push(l);
+        return l;
+      }),
+      revoke: vi.fn(async () => {}),
+    };
+    const clients = fakeClients([programmeFor()]);
+    const profileApi = fakeProfile(complete);
+    render(
+      <Planner
+        gyms={[gym]}
+        loadGym={loadGym}
+        templates={templates}
+        history={history}
+        clientsApi={clients.api}
+        profileApi={profileApi}
+        shareApi={share}
+        onSignOut={() => {}}
+      />,
+    );
+    await openClients();
+    fireEvent.click(await screen.findByRole('button', { name: /Carla/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Share Starter' }));
+    const panel = await screen.findByRole('region', { name: /^Share/ });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Create a link' }));
+    await waitFor(() => expect(share.create).toHaveBeenCalledWith('p1', 90));
+    const wa = (await within(panel).findByRole('link', { name: '2. Open WhatsApp' })).getAttribute('href')!;
+    expect(wa).toContain('wa.me/27821112222');
+    const message = decodeURIComponent(wa.split('?text=')[1]!);
+    expect(message).toContain('Hi Carla,');
+    expect(message).toContain(`1. ${x.name} (${machine.name}`);
+    expect(message).toContain(`/p/${'d'.repeat(64)}`);
+    expect(message).not.toMatch(/bad knee|Run 10k/); // nothing from the private profile
+    expect(within(panel).getByRole('button', { name: '1. Save PDF' })).toBeInTheDocument();
+  });
+
+  it('the Session tab offers Send to your client, filled in with the chosen client’s number and email', async () => {
+    const clients = fakeClients([record({ whatsapp: '082 111 2222', email: 'carla@example.com' })]);
+    const view = mount(clients);
+    await screen.findByRole('group', { name: 'Floor plan with training zones and equipment' });
+    fireEvent.click(view.container.querySelector(`g.mk[data-eq="${machine.id}"]`)!);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      within(dialog)
+        .getAllByRole('button')
+        .find((b) => b.textContent?.includes(x.name))!,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Session (1)' }));
+    const send = await screen.findByRole('region', { name: 'Send to your client' });
+    expect((within(send).getByLabelText('WhatsApp number') as HTMLInputElement).value).toBe('');
+    fireEvent.change(await screen.findByRole('combobox', { name: /^Client/ }), { target: { value: 'c1' } });
+    await waitFor(() =>
+      expect(
+        (
+          within(screen.getByRole('region', { name: 'Send to your client' })).getByLabelText(
+            'WhatsApp number',
+          ) as HTMLInputElement
+        ).value,
+      ).toBe('082 111 2222'),
+    );
+    expect(
+      (
+        within(screen.getByRole('region', { name: 'Send to your client' })).getByLabelText(
+          'Email',
+        ) as HTMLInputElement
+      ).value,
+    ).toBe('carla@example.com');
+  });
+
+  it('there is nothing to send until the session has an exercise', async () => {
+    mount(fakeClients([record()]));
+    await screen.findByRole('group', { name: 'Floor plan with training zones and equipment' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Session (0)' }));
+    expect(screen.queryByRole('region', { name: 'Send to your client' })).toBeNull();
   });
 });

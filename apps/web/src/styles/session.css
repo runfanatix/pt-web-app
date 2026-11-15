@@ -566,3 +566,23 @@ ul.callout {
   text-align: left;
   vertical-align: top;
 }
+
+/* programme rows that open a share panel, and the public client page */
+.rows li > .full-row {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.public .rx {
+  margin: 0;
+  font: 600 14px var(--f-mono);
+}
+.footer-note {
+  margin-top: 16px;
+  text-align: center;
+}
+.addrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}

@@ -96,34 +96,60 @@ export interface StoredRun extends Record<string, unknown> {
   run_steps: Record<string, unknown>[];
 }
 
-/** Signs in and serves the Bedfordview data. Templates and runs live in memory for the page's lifetime. */
-export async function signInWithBedfordview(page: Page): Promise<{
+export interface StoredLink {
+  token: string;
+  programme_id: string;
+  created_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+}
+
+/** Everything the mocked API remembers. Share one between pages to see the same data in two browser windows. */
+export interface MockDb {
   templates: StoredTemplate[];
   runs: StoredRun[];
   clients: StoredClient[];
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
-}> {
-  const templates: StoredTemplate[] = [];
-  const runs: StoredRun[] = [];
-  const clients: StoredClient[] = [];
-  const dataRequests: Record<string, unknown>[] = [];
-  const profile: Record<string, unknown> = {
-    business_name: '',
-    address: '',
-    contact_email: '',
-    contact_phone: '',
-    information_officer_name: '',
-    information_officer_email: '',
-    payment_provider: '',
-    messaging_provider: '',
-    studio_name: '',
+  shareLinks: StoredLink[];
+}
+
+export function createMockDb(): MockDb {
+  return {
+    templates: [],
+    runs: [],
+    clients: [],
+    dataRequests: [],
+    shareLinks: [],
+    profile: {
+      business_name: '',
+      address: '',
+      contact_email: '',
+      contact_phone: '',
+      information_officer_name: '',
+      information_officer_email: '',
+      payment_provider: '',
+      messaging_provider: '',
+      studio_name: '',
+    },
   };
+}
+
+/** Signs a trainer in and serves the Bedfordview data. Data lives in memory for the page's lifetime. */
+export async function signInWithBedfordview(page: Page): Promise<MockDb> {
+  const db = createMockDb();
   // supabase-js stores the session under sb-<first label of the host>-auth-token.
   await page.addInitScript(
     (s) => localStorage.setItem('sb-127-auth-token', JSON.stringify(s)),
     fakeSession(),
   );
+  await serveApi(page, db);
+  return db;
+}
+
+/** Serves the mocked Supabase API to a page. Use on its own for a visitor who is not logged in. */
+export async function serveApi(page: Page, db: MockDb): Promise<void> {
+  const { templates, runs, clients, profile, dataRequests, shareLinks } = db;
 
   await page.route(`${SUPABASE_URL}/**`, async (route) => {
     const req = route.request();
@@ -298,7 +324,63 @@ export async function signInWithBedfordview(page: Page): Promise<{
         return empty(route);
       }
     }
+    if (path.endsWith('/rest/v1/share_links')) {
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        const link: StoredLink = {
+          token: String(shareLinks.length + 1).padStart(64, 'a'),
+          programme_id: String(body.programme_id),
+          created_at: new Date().toISOString(),
+          expires_at: (body.expires_at as string | null) ?? null,
+          revoked_at: null,
+        };
+        shareLinks.push(link);
+        return json(route, link);
+      }
+      if (method === 'PATCH') {
+        const token = (url.searchParams.get('token') ?? '').replace('eq.', '');
+        const link = shareLinks.find((l) => l.token === token);
+        if (link) Object.assign(link, req.postDataJSON() as Record<string, unknown>);
+        return empty(route);
+      }
+      const pid = (url.searchParams.get('programme_id') ?? '').replace('eq.', '');
+      return json(
+        route,
+        shareLinks.filter((l) => l.programme_id === pid),
+      );
+    }
+
+    // The one thing a visitor who is not logged in may call: what a client's link shows.
+    if (path.endsWith('/rest/v1/rpc/get_shared_programme')) {
+      const { p_token } = req.postDataJSON() as { p_token: string };
+      const link = shareLinks.find((l) => l.token === p_token);
+      const live = link && !link.revoked_at && (!link.expires_at || Date.parse(link.expires_at) > Date.now());
+      if (!live) return json(route, null);
+      const client = clients.find((c) => c.programmes.some((p) => p.id === link.programme_id));
+      const programme = client?.programmes.find((p) => p.id === link.programme_id) as
+        Record<string, unknown> | undefined;
+      if (!client || !programme) return json(route, null);
+      const items = (programme.programme_items as Record<string, unknown>[]).map((i) => ({
+        position: i.position,
+        equipment_id: i.equipment_id,
+        exercise_name: i.exercise_name,
+        sets: i.sets,
+        reps: i.reps,
+        rest: i.rest,
+        note: i.note,
+        cue: '',
+      }));
+      // Only the programme and the plan: nothing from the client's own record.
+      return json(route, {
+        title: programme.title,
+        notes: programme.notes,
+        assigned_at: programme.assigned_at,
+        trainer: profile.business_name,
+        gym: { name: plan.gym.name, branch: plan.gym.branch, address: plan.gym.address },
+        items,
+        floors: floorRowsFromPlan(plan),
+      });
+    }
     return json(route, {});
   });
-  return { templates, runs, clients, profile, dataRequests };
 }

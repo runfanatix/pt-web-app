@@ -13,7 +13,9 @@ import {
   type TrainerProfile,
 } from '@pt/core';
 import type { ClientsApi, DataRequest, ProfileApi } from '../../data/clients.ts';
+import type { ShareApi } from '../../data/share.ts';
 import { BusinessDetails } from './BusinessDetails.tsx';
+import type { ShareContext } from './shareContext.ts';
 import { ClientDetail } from './ClientDetail.tsx';
 import { ConsentWizard } from './ConsentWizard.tsx';
 import { NoticeView } from './NoticeView.tsx';
@@ -28,6 +30,8 @@ interface Props {
   onChanged: () => Promise<void>;
   onOpenProgramme: (p: ProgrammeRecord, client: { id: string; name: string }) => void;
   say: (msg: string) => void;
+  shareApi?: ShareApi | null;
+  shareContext?: ShareContext | null;
 }
 
 type View =
@@ -47,6 +51,8 @@ export function ClientsTab({
   onChanged,
   onOpenProgramme,
   say,
+  shareApi = null,
+  shareContext = null,
 }: Props) {
   const [view, setView] = useState<View>({ kind: 'list' });
   const [query, setQuery] = useState('');
@@ -130,6 +136,8 @@ export function ClientsTab({
         onChanged={onChanged}
         onOpenProgramme={onOpenProgramme}
         say={say}
+        shareApi={shareApi}
+        shareContext={shareContext}
       />
     );
   }

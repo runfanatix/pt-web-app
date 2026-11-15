@@ -68,6 +68,10 @@ trainer's data. The automated version of this check is `packages/db/src/rls.test
 
 ## 7. Vercel (when you want it online)
 
+Clients open their programme at `/p/<token>`, so the host must send every path to `index.html`. `apps/web/vercel.json` already does this for Vercel (other hosts need the same single-page-app rewrite).
+
+The SQL files in `supabase/migrations/` are applied in filename order; the latest are `20261116090000_clients_consent.sql` and `20261117090000_shared_programme.sql`.
+
 Import the GitHub repository in Vercel, set the root directory to `apps/web`, build command `pnpm build`, output
 directory `dist`, and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables. Never add the
 service role key to Vercel. Add the Vercel URL to Supabase's Site URL and redirect URLs.

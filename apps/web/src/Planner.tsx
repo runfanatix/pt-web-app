@@ -5,8 +5,10 @@ import {
   fmtClock,
   isActive,
   isRunView,
+  pdfFileName,
   itemsPerFloor,
   remapItems,
+  snapsOf,
   runLogText,
   emptyProfile,
   type ClientRecord,
@@ -33,6 +35,10 @@ import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
 import type { ClientsApi, ProfileApi } from './data/clients.ts';
+import type { ShareApi } from './data/share.ts';
+import { SendActions } from './components/SendActions.tsx';
+import { buildShare } from './lib/shareModel.ts';
+import { savePdf, type PdfModel } from './lib/pdf.ts';
 import type { HistoryApi } from './data/history.ts';
 import type { Template, TemplateApi } from './data/templates.ts';
 import { copyText } from './lib/clipboard.ts';
@@ -51,6 +57,7 @@ interface Props {
   /** Null until the trainer profile has loaded. */
   clientsApi?: ClientsApi | null;
   profileApi?: ProfileApi | null;
+  shareApi?: ShareApi | null;
   onSignOut: () => void;
 }
 
@@ -67,6 +74,7 @@ export function Planner({
   history,
   clientsApi = null,
   profileApi = null,
+  shareApi = null,
   onSignOut,
 }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
@@ -216,6 +224,8 @@ export function Planner({
   }
 
   const gymTitle = [gym.name, gym.branch].filter(Boolean).join(' ');
+  const gymLine = [gymTitle, gym.address].filter(Boolean).join(', ');
+  const sending = clients?.find((r) => r.client.id === session.meta.clientId)?.client;
 
   function say(msg: string, view = false) {
     clearTimeout(toastTimer.current);
@@ -368,6 +378,42 @@ export function Planner({
   async function copyEntry(e: HistoryEntry) {
     const ok = await copyText(runLogText(e));
     setRunMsg(ok ? `Log for "${e.title}" copied.` : 'Could not copy the log.');
+  }
+  /** The finished workout as a results PDF. The route map is drawn only for the gym that is open. */
+  function pdfEntry(e: HistoryEntry) {
+    const pdf: PdfModel = {
+      title: e.title,
+      client: e.clientName,
+      coach: e.coach,
+      date: e.date,
+      notes: '',
+      gym: e.gymName,
+      plannedSecs: e.plannedMin * 60,
+      layout: e.gymId === gym!.id ? layout : null,
+      actual: { totalMs: e.totalMs },
+      items: e.steps.map((s) => ({
+        eid: s.eid,
+        exercise: s.exercise,
+        machine: s.machine,
+        zone: s.zone,
+        sets: s.sets,
+        reps: s.reps,
+        rest: s.rest,
+        note: '',
+        cue: '',
+        ms: s.ms,
+        done: s.done,
+      })),
+    };
+    try {
+      savePdf(
+        pdf,
+        pdfFileName({ client: e.clientName, date: e.date }, 'results', new Date().toISOString().slice(0, 10)),
+      );
+      setRunMsg('Results PDF saved.');
+    } catch (err) {
+      setRunMsg(`The PDF could not be made: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
   async function deleteEntry(e: HistoryEntry) {
     if (!history) return;
@@ -549,6 +595,33 @@ export function Planner({
                     onAssigned={refreshClients}
                   />
                 ) : null}
+                {session.items.length > 0 && (
+                  <section className="share" aria-label="Send to your client">
+                    <h3>Send to your client</h3>
+                    <SendActions
+                      key={session.meta.clientId}
+                      pdf={
+                        buildShare({
+                          title: session.meta.title,
+                          client: session.meta.client,
+                          coach: session.meta.coach,
+                          date: session.meta.date,
+                          notes: session.meta.notes,
+                          gym: gymLine,
+                          items: snapsOf(session.items),
+                          layout,
+                          library,
+                        }).pdf
+                      }
+                      whatsapp={sending?.whatsapp ?? ''}
+                      email={sending?.email ?? ''}
+                    />
+                    <p className="sub">
+                      To send a link the client opens on their phone, assign the programme to them and share
+                      it from their profile in the Clients tab.
+                    </p>
+                  </section>
+                )}
                 {templates ? (
                   <TemplatesPanel
                     api={templates}
@@ -578,6 +651,7 @@ export function Planner({
                 onLoadTemplate={(t) => void applyTemplate(t, 'replace', true)}
                 onCopyEntry={(e) => void copyEntry(e)}
                 onDeleteEntry={(e) => void deleteEntry(e)}
+                onPdfEntry={pdfEntry}
                 status={runMsg}
                 place={placeOf}
               />
@@ -593,6 +667,8 @@ export function Planner({
                 onChanged={refreshClients}
                 onOpenProgramme={(prog, client) => void openProgramme(prog, client)}
                 say={say}
+                shareApi={shareApi}
+                shareContext={{ gymId: gym.id, gymLine, layout, library }}
               />
             )}
             {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (

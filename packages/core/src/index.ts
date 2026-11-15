@@ -10,3 +10,4 @@ export * from './history.ts';
 export * from './run-store.ts';
 export * from './privacy.ts';
 export * from './clients.ts';
+export * from './share.ts';

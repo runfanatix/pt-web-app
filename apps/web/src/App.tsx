@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { tokenFromPath } from '@pt/core';
 import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
 import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
@@ -7,6 +8,8 @@ import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
 import { createClientsApi, createProfileApi, type ClientsApi, type ProfileApi } from './data/clients.ts';
 import { createHistoryApi, type HistoryApi } from './data/history.ts';
+import { createShareApi } from './data/share.ts';
+import { PublicProgramme } from './components/PublicProgramme.tsx';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
 
@@ -37,6 +40,7 @@ function SignedIn() {
   const { client, signOut } = useAuth();
   const state = useGyms(client);
   const loadGym = useMemo(() => createGymDataLoader(client), [client]);
+  const shareApi = useMemo(() => createShareApi(client), [client]);
   const [templates, setTemplates] = useState<TemplateApi | null>(null);
   const [history, setHistory] = useState<HistoryApi | null>(null);
   const [clientsApi, setClientsApi] = useState<ClientsApi | null>(null);
@@ -73,6 +77,7 @@ function SignedIn() {
       history={history}
       clientsApi={clientsApi}
       profileApi={profileApi}
+      shareApi={shareApi}
       onSignOut={() => void signOut()}
     />
   );
@@ -84,8 +89,19 @@ function Gate() {
   return session ? <SignedIn /> : <AuthScreen />;
 }
 
-export function App({ client = defaultClient }: { client?: SupabaseClient | null }) {
+/**
+ * /p/<token> is a client's link: it opens the programme with no sign-in. Everything else is the trainer's app.
+ */
+export function App({
+  client = defaultClient,
+  pathname = window.location.pathname,
+}: {
+  client?: SupabaseClient | null;
+  pathname?: string;
+}) {
   if (!client) return <SetupNotice />;
+  const token = tokenFromPath(pathname);
+  if (token) return <PublicProgramme client={client} token={token} />;
   return (
     <AuthProvider client={client}>
       <Gate />

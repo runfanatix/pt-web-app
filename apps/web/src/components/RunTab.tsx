@@ -39,6 +39,7 @@ interface Props {
   onLoadTemplate: (t: Template) => void;
   onCopyEntry: (e: HistoryEntry) => void;
   onDeleteEntry: (e: HistoryEntry) => void;
+  onPdfEntry: (e: HistoryEntry) => void;
   status: string;
   /** What the pop-ups and rows call the place of a machine. */
   place: (e: Equip) => string;
@@ -59,6 +60,7 @@ export function RunTab({
   onLoadTemplate,
   onCopyEntry,
   onDeleteEntry,
+  onPdfEntry,
   status,
   place,
 }: Props) {
@@ -185,6 +187,7 @@ export function RunTab({
           total={history.length}
           onCopy={onCopyEntry}
           onDelete={onDeleteEntry}
+          onPdf={onPdfEntry}
         />
       )}
     </div>
@@ -240,11 +243,13 @@ function HistoryList({
   total,
   onCopy,
   onDelete,
+  onPdf,
 }: {
   entries: HistoryEntry[];
   total: number;
   onCopy: (e: HistoryEntry) => void;
   onDelete: (e: HistoryEntry) => void;
+  onPdf: (e: HistoryEntry) => void;
 }) {
   if (!entries.length) {
     return <p className="empty">No completed runs yet. Finish a run in the Run tab and it is saved here.</p>;
@@ -288,6 +293,14 @@ function HistoryList({
                   onClick={() => onCopy(r)}
                 >
                   Copy log
+                </button>
+                <button
+                  type="button"
+                  className="btn sm"
+                  aria-label={`Save PDF for ${r.title}`}
+                  onClick={() => onPdf(r)}
+                >
+                  Save PDF
                 </button>
                 <ConfirmButton aria-label={`Delete run ${r.title}`} onConfirm={() => onDelete(r)}>
                   Delete

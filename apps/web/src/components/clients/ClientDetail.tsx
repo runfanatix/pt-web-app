@@ -20,7 +20,11 @@ import {
 import type { ClientsApi, ConsentInput } from '../../data/clients.ts';
 import { copyText } from '../../lib/clipboard.ts';
 import { ConfirmButton } from '../ConfirmButton.tsx';
+import { buildShare } from '../../lib/shareModel.ts';
+import type { ShareApi } from '../../data/share.ts';
 import { ConsentWizard } from './ConsentWizard.tsx';
+import { SharePanel } from './SharePanel.tsx';
+import type { ShareContext } from './shareContext.ts';
 import { NoticeView } from './NoticeView.tsx';
 
 interface Props {
@@ -32,6 +36,8 @@ interface Props {
   onChanged: () => Promise<void>;
   onOpenProgramme: (p: ProgrammeRecord, client: { id: string; name: string }) => void;
   say: (msg: string) => void;
+  shareApi?: ShareApi | null;
+  shareContext?: ShareContext | null;
 }
 
 const SUBSCRIPTIONS = ['active', 'trial', 'paused', 'expired'] as const;
@@ -44,7 +50,17 @@ const CONSENT_LABEL: Record<string, string> = {
   marketing: 'News and offers',
 };
 
-export function ClientDetail({ record, profile, api, onBack, onChanged, onOpenProgramme, say }: Props) {
+export function ClientDetail({
+  record,
+  profile,
+  api,
+  onBack,
+  onChanged,
+  onOpenProgramme,
+  say,
+  shareApi = null,
+  shareContext = null,
+}: Props) {
   const [draft, setDraft] = useState<Client>(record.client);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -53,6 +69,7 @@ export function ClientDetail({ record, profile, api, onBack, onChanged, onOpenPr
   const [exportText, setExportText] = useState('');
   const [shareTo, setShareTo] = useState({ person: '', purpose: '', ticked: false });
   const [marketingTick, setMarketingTick] = useState(false);
+  const [sharing, setSharing] = useState<string | null>(null);
 
   const c = record.client;
   const minor = isMinor(c.dateOfBirth);
@@ -355,6 +372,17 @@ export function ClientDetail({ record, profile, api, onBack, onChanged, onOpenPr
                   >
                     Open
                   </button>
+                  {shareApi && shareContext && (
+                    <button
+                      type="button"
+                      className="btn sm"
+                      aria-expanded={sharing === p.id}
+                      aria-label={`Share ${p.title}`}
+                      onClick={() => setSharing(sharing === p.id ? null : p.id)}
+                    >
+                      Share
+                    </button>
+                  )}
                   <ConfirmButton
                     aria-label={`Delete programme ${p.title}`}
                     onConfirm={() => void run(() => api.removeProgramme(p.id), 'Programme deleted.')}
@@ -362,6 +390,31 @@ export function ClientDetail({ record, profile, api, onBack, onChanged, onOpenPr
                     Delete
                   </ConfirmButton>
                 </div>
+                {sharing === p.id && shareApi && shareContext && (
+                  <div className="full-row">
+                    <SharePanel
+                      programmeId={p.id}
+                      title={p.title}
+                      api={shareApi}
+                      pdf={
+                        buildShare({
+                          title: p.title,
+                          client: c.name,
+                          coach: '',
+                          date: p.assignedAt.slice(0, 10),
+                          notes: p.notes,
+                          gym: p.gymId === shareContext.gymId ? shareContext.gymLine : '',
+                          items: p.items,
+                          layout: p.gymId === shareContext.gymId ? shareContext.layout : null,
+                          library: shareContext.library,
+                        }).pdf
+                      }
+                      whatsapp={c.whatsapp}
+                      email={c.email}
+                      say={say}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
