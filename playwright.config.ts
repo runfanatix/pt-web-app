@@ -14,7 +14,9 @@ export default defineConfig({
   webServer: {
     command: 'pnpm --filter @pt/web build && pnpm --filter @pt/web preview',
     url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
+    // Dummy project: the e2e run only exercises the signed-out screens, so no network calls are made.
+    env: { VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_ANON_KEY: 'e2e-anon-key' },
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

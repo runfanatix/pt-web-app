@@ -1,67 +1,52 @@
-import { useState } from 'react';
-import { TABS, type Mode, type TabId } from './tabs.ts';
-import { GymBar } from './components/GymBar.tsx';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
+import { AuthScreen } from './auth/AuthScreen.tsx';
+import { useGyms } from './data/useGym.ts';
+import { Planner } from './Planner.tsx';
+import { supabase as defaultClient } from './lib/supabase.ts';
 
-// Placeholder gym until Phase 1 loads it from the database.
-const GYM = { name: 'Virgin Active', branch: 'Bedfordview', address: '101 Van Buuren Rd' };
-
-export function App() {
-  const [mode, setMode] = useState<Mode>('plan');
-  const [tab, setTab] = useState<TabId>('zone');
-
+function SetupNotice() {
   return (
     <div className="wrap">
-      <header className="top">
-        <div>
-          <p className="eyebrow">
-            {GYM.name} {GYM.branch} &middot; {GYM.address}
-          </p>
-          <h1>{GYM.branch} Zone Planner</h1>
-          <p className="lede">
-            Click a machine on the plan, pick an exercise from its pop-up, and it lands in your session.
-          </p>
-        </div>
-        <div className="topright">
-          <div className="seg" role="group" aria-label="Mode">
-            <button type="button" aria-pressed={mode === 'plan'} onClick={() => setMode('plan')}>
-              Plan session
-            </button>
-            <button type="button" aria-pressed={mode === 'edit'} onClick={() => setMode('edit')}>
-              Edit layout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <GymBar name={GYM.name} branch={GYM.branch} address={GYM.address} />
-
-      <main className="grid">
-        <section className="mapcol" aria-label="Gym floor map">
-          <div className="mapscroll">
-            <div className="map-placeholder">Floor plan arrives in Phase 2</div>
-          </div>
-        </section>
-        <aside className="panel" aria-label="Planner panel">
-          <div className="tabs" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                id={`tab-${t.id}`}
-                aria-selected={tab === t.id}
-                aria-controls="panelBody"
-                onClick={() => setTab(t.id)}
-              >
-                {t.id === 'zone' && mode === 'edit' ? 'Layout' : t.label}
-              </button>
-            ))}
-          </div>
-          <div id="panelBody" role="tabpanel" aria-labelledby={`tab-${tab}`} className="panel-body">
-            <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
-          </div>
-        </aside>
-      </main>
+      <p className="eyebrow">PT Planner</p>
+      <h1>Connect your database</h1>
+      <p className="lede">
+        Copy <code>.env.example</code> to <code>.env</code> and set <code>VITE_SUPABASE_URL</code> and{' '}
+        <code>VITE_SUPABASE_ANON_KEY</code>, then restart. Steps are in docs/06-supabase-setup.md.
+      </p>
     </div>
+  );
+}
+
+function Status({ children }: { children: string }) {
+  return (
+    <div className="wrap">
+      <p className="hint" role="status">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function SignedIn() {
+  const { client, signOut } = useAuth();
+  const state = useGyms(client);
+  if (state.status === 'loading') return <Status>Loading your gyms…</Status>;
+  if (state.status === 'error') return <Status>{`Could not load your gyms: ${state.message}`}</Status>;
+  return <Planner gyms={state.gyms} onSignOut={() => void signOut()} />;
+}
+
+function Gate() {
+  const { session } = useAuth();
+  if (session === undefined) return <Status>Loading…</Status>;
+  return session ? <SignedIn /> : <AuthScreen />;
+}
+
+export function App({ client = defaultClient }: { client?: SupabaseClient | null }) {
+  if (!client) return <SetupNotice />;
+  return (
+    <AuthProvider client={client}>
+      <Gate />
+    </AuthProvider>
   );
 }

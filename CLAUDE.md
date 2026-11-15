@@ -69,12 +69,13 @@ Useful prototype function names to search for when porting logic: `zoneLoops` (u
 ```
 CLAUDE.md                     this file
 README.md                     handoff package overview
-docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script
+docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script, 06 Supabase setup, 07 privacy and POPIA
 prototype/                    FROZEN reference (zone-planner-v11.html + Playwright scenarios). Never edit.
 apps/web/                     React + Vite + TypeScript app (shell only so far)
-packages/core/                pure TypeScript: geometry, remap, route order, snapshot, Zod schemas, importer
-scripts/                      CLI scripts (import-prototype.ts)
-supabase/migrations/          SQL migrations (Phase 1)
+packages/core/                pure TypeScript: Zod schemas, importer, built-in library seed (geometry, remap, route order, snapshot come in later phases)
+packages/db/                  tests that run the real SQL migrations in an in-process Postgres (PGlite): RLS isolation, importer, library seed
+scripts/                      CLI scripts: import-prototype.ts, seed-library.ts (both need the Supabase service role key; both have --dry-run)
+supabase/migrations/          SQL: schema and row-level security (apply in filename order; see docs/06-supabase-setup.md)
 e2e/                          Playwright tests
 exports/                      gym JSON exported from the prototype (bedfordview-v11.json)
 .claude/                      project agents and skills (see below)
@@ -82,12 +83,12 @@ Nicks tools/                  library of Nick Saraev's skills/templates; copy fr
 design-reference/             external DESIGN.md collection (gitignored, read-only)
 ```
 
-Current status: **Phase 0 (scaffold) is done.** pnpm workspace, ESLint, Prettier, Vitest, Playwright (390 px and 1280 px projects) and CI are in place, and `apps/web` renders the app shell (header, mode switch, gym bar, seven tabs) using the prototype's tokens. Next is **Phase 1** (domain, Zod schemas, SQL migrations, Supabase auth and RLS). Phase 1 depends on the owner's answers to open questions 1 and 7 in `docs/04-decision-log.md` (hosting, POPIA); ask before building it.
+Current status: **Phase 0 (scaffold) and Phase 1 (domain and data) are built.** Phase 1: Zod schemas, SQL schema with RLS, auth (sign in and sign up with required privacy-notice acceptance), the app reads the signed-in trainer's gym from Supabase, importer and built-in library scripts. Everything is tested against an in-process Postgres; **it has not yet been run against a real Supabase project**: the owner creates the free project (docs/06-supabase-setup.md) and then does the manual isolation check. Costs: owner pays, free tiers until paying customers. Privacy: notice and consent flow required at launch, see docs/07-privacy-popia.md (notice wording is a placeholder). Next is **Phase 2** (read-only floor plan).
 
 ## Commands (run from the repo root; needs Node 20+ and pnpm 12, `npm i -g pnpm`)
 
 - `pnpm install` then `pnpm dev` (http://localhost:5173); `pnpm build`; `pnpm lint`; `pnpm format:check` (`pnpm format` to fix); `pnpm typecheck`
-- `pnpm test` Vitest (core: 14 importer tests; web: shell tests); `pnpm e2e` Playwright (builds and previews the app on :4173; first time run `pnpm exec playwright install chromium`)
+- `pnpm test` Vitest (core: importer, schemas, library; db: RLS and importer on real SQL; web: components); `pnpm e2e` Playwright (builds with a dummy Supabase URL and tests the signed-out screens on :4173; first time run `pnpm exec playwright install chromium`)
 - Handoff files `packages/core/src/import-prototype*.ts` and `scripts/import-prototype.ts` are deliberately excluded from Prettier; ESLint ignores unused caught errors for them. The tsconfig does not use `noUncheckedIndexedAccess` because the tested importer predates it.
 - `npx tsx scripts/import-prototype.ts --file exports/bedfordview-v11.json --trainer <id> --dry-run` (expect 14 zones, 41 machines)
 

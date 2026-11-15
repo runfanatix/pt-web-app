@@ -36,14 +36,14 @@
 
 ## Open questions for the owner (ask before building)
 
-1. Hosting and accounts: Supabase and Vercel as recommended, or something else? Who pays for them?
+1. **Answered (2026-11-15):** Supabase and Vercel. The owner (developer) pays, using free tiers for the working prototype and upgrading when the app goes live with paying customers. See `docs/06-supabase-setup.md`.
 2. Do clients log in (their own accounts) from day one, or is the share link enough for the first release?
 3. Should layout editing be restricted to the gym owner or any trainer? Are layouts shared between trainers at the
    same gym?
 4. Equipment catalogue: who supplies the Technogym and Eleiko item list, codes and images, and under what licence?
 5. Should exercise-to-machine links be copied from one gym to another by name when a gym is created?
 6. Branding: product name, colours and logo for the real app (the prototype is named after Bedfordview only).
-7. POPIA: where will data be hosted, and is a privacy notice and client consent flow needed at launch?
+7. **Answered (2026-11-15):** a privacy notice and consent flow are required at launch. Hosting region still to confirm (prefer Cape Town). Built and outstanding items: `docs/07-privacy-popia.md`. The notice wording must come from the owner.
 8. Which payments and calendar providers for the later platform modules?
 
 ## What the prototype does not have (candidate backlog)
