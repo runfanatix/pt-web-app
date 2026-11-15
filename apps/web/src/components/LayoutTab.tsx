@@ -22,6 +22,7 @@ import {
 import { ConfirmButton } from './ConfirmButton.tsx';
 import { TYPE_LETTERS } from './FloorPlan.tsx';
 import { newUid } from '../session/sessionState.ts';
+import { FloorCard, StructCard, StructKey, ZoneShaping } from './LayoutPanels.tsx';
 
 type Equip = Layout['equipment'][number];
 
@@ -37,6 +38,11 @@ interface Props {
   onPart: (i: number) => void;
   onSelectZone: (id: string | null) => void;
   onSelectEq: (id: string | null) => void;
+  selStruct: string | null;
+  onSelectStruct: (id: string | null) => void;
+  onGoToFloor: (id: string) => void;
+  /** Machines copied by a duplicate, whose exercise links are copied after the layout is saved. */
+  onCopies: (copies: { from: string; to: string }[]) => void;
   /** A change to the working copy. */
   onChange: (l: Layout) => void;
   library: LibraryExercise[];
@@ -50,6 +56,7 @@ interface Props {
 export function LayoutTab(p: Props) {
   const { layout, onChange } = p;
   const zone = p.selZone ? layout.zones.find((z) => z.id === p.selZone) : undefined;
+  const struct = p.selStruct ? layout.structs.find((q) => q.id === p.selStruct) : undefined;
   const eq = p.selEq ? layout.equipment.find((e) => e.id === p.selEq) : undefined;
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<Equip['type']>('machine');
@@ -159,6 +166,17 @@ export function LayoutTab(p: Props) {
             {numberField('Width', 'w')}
             {numberField('Height', 'h')}
             <div className="wide">
+              <ZoneShaping
+                layout={layout}
+                zone={zone}
+                part={p.part}
+                onPart={p.onPart}
+                onChange={onChange}
+                onSelectZone={p.onSelectZone}
+                onCopies={p.onCopies}
+                onGoToFloor={p.onGoToFloor}
+                say={p.say}
+              />
               <ConfirmButton
                 aria-label="Delete zone"
                 onConfirm={() => {
@@ -180,6 +198,31 @@ export function LayoutTab(p: Props) {
           </div>
         )}
       </section>
+
+      <StructKey
+        layout={layout}
+        floorId={p.floorId}
+        snap={p.snap}
+        onChange={onChange}
+        onSelectStruct={p.onSelectStruct}
+      />
+      {struct && (
+        <StructCard
+          layout={layout}
+          s={struct}
+          floorId={p.floorId}
+          onChange={onChange}
+          onDeselect={() => p.onSelectStruct(null)}
+          say={p.say}
+        />
+      )}
+      <FloorCard
+        layout={layout}
+        floorId={p.floorId}
+        onChange={onChange}
+        onGoToFloor={p.onGoToFloor}
+        say={p.say}
+      />
 
       <section className="card" aria-label="Add a machine">
         <h3>Add a machine</h3>

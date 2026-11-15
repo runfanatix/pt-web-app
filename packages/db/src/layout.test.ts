@@ -4,6 +4,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
 import {
   addEquipment,
+  addFloor,
+  addStruct,
+  deleteFloor,
+  rotateStruct,
   addZone,
   deleteEquipment,
   deleteZone,
@@ -224,6 +228,27 @@ describe('saving an edited layout', () => {
     expect((await loadLayout(alice.userId)).zones.find((q) => q.id === z.id)!.parts).toEqual([
       { x: z.x + z.w, y: z.y, w: 90, h: 60 },
     ]);
+  });
+
+  it('saves architecture and floors: add a wall and a floor, turn a lift, then delete the floor', async () => {
+    const l = await loadLayout(alice.userId);
+    const f0 = l.floors[0]!.id;
+    let next = addStruct(l, 'wall', f0, crypto.randomUUID(), false);
+    next = addStruct(next, 'lift', f0, 'aaaaaaaa-0000-4000-8000-000000000001', false);
+    next = rotateStruct(next, 'aaaaaaaa-0000-4000-8000-000000000001', f0);
+    const floorId = crypto.randomUUID();
+    next = addFloor(next, floorId, f0);
+    await save(alice.userId, next);
+    const after = await loadLayout(alice.userId);
+    expect(after.floors).toHaveLength(l.floors.length + 1);
+    expect(after.structs.some((q) => q.type === 'wall')).toBe(true);
+    const lift = after.structs.find((q) => q.id === 'aaaaaaaa-0000-4000-8000-000000000001')!;
+    expect(lift.shared).toBe(true);
+    const gone = deleteFloor(after, after.floors[1]!.id);
+    await save(alice.userId, gone.layout);
+    const last = await loadLayout(alice.userId);
+    expect(last.floors).toHaveLength(after.floors.length - 1);
+    expect(last.zones.every((z) => last.floors.some((f) => f.id === z.floor))).toBe(true);
   });
 
   it('is all or nothing: one bad row stops the whole save', async () => {
