@@ -341,3 +341,27 @@
   max-height: 220px;
   overflow: auto;
 }
+.st .hit {
+  fill: transparent;
+  stroke: transparent;
+}
+.editing .st .hit {
+  pointer-events: all;
+  cursor: move;
+}
+.st.sel .sa-wall,
+.st.sel .sa-bal,
+.st.sel .sa-balp,
+.st.sel .sa-door,
+.st.sel .sa-glass {
+  stroke: var(--accent);
+}
+.st.sel .sa-box {
+  stroke: var(--accent);
+}
+.st.sel .sa-col {
+  fill: var(--accent);
+}
+.hnd .hgrip[r] {
+  fill: var(--paper);
+}

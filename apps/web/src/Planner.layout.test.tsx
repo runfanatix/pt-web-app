@@ -134,4 +134,75 @@ describe('layout editor', () => {
     fireEvent.click(boxes[0]!);
     await waitFor(() => expect(api.setLink).toHaveBeenCalledTimes(1));
   });
+
+  it('adds a wall, a floor, and saves both in one call', async () => {
+    const { api, saved } = fakeApi();
+    await openEditor(api);
+    fireEvent.click(screen.getByRole('button', { name: 'Add wall' }));
+    expect(await screen.findByRole('region', { name: 'Selected architecture' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add a floor' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]!.structs.some((q) => q.type === 'wall')).toBe(true);
+    expect(saved[0]!.floors).toHaveLength(data.layout.floors.length + 1);
+  });
+
+  it('rotates a structure a quarter turn', async () => {
+    const { api, saved } = fakeApi();
+    await openEditor(api);
+    fireEvent.click(screen.getByRole('button', { name: 'Add staircase' }));
+    const card = await screen.findByRole('region', { name: 'Selected architecture' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Rotate 90°' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const st = saved[0]!.structs.find(
+      (q) => q.id && q.type === 'stairs' && q.label === 'STAIRS' && q.h === 80,
+    );
+    expect(st).toBeDefined();
+  });
+
+  it('joins two touching zones into one and the machines come along', async () => {
+    const { api, saved } = fakeApi();
+    await openEditor(api);
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    fireEvent.change(screen.getByLabelText('Name', { exact: true }), { target: { value: 'First' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add zone' }));
+    fireEvent.change(screen.getByLabelText('Name', { exact: true }), { target: { value: 'Second' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Join “First”' }));
+    expect(screen.getByRole('button', { name: 'Part 2' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const second = saved[0]!.zones.find((z) => z.name === 'Second')!;
+    expect(second.parts).toHaveLength(1);
+    expect(saved[0]!.zones.some((z) => z.name === 'First')).toBe(false);
+  });
+
+  it('duplicating a zone copies its machines, and their exercise links are copied on save', async () => {
+    const { api, saved } = fakeApi();
+    await openEditor(api);
+    const withLinks = data.library.find((x) => x.equipmentIds.length > 0)!;
+    const eqId = withLinks.equipmentIds[0]!;
+    const z = data.layout.zones.find((q) => q.id === data.layout.equipment.find((e) => e.id === eqId)!.zone)!;
+    fireEvent.click(document.querySelector(`g.zone[data-zone="${z.id}"]`)!);
+    fireEvent.click(await screen.findByRole('button', { name: 'Duplicate zone' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const copy = saved[0]!.zones.find((q) => q.name.endsWith(' copy'))!;
+    expect(copy).toBeDefined();
+    const copied = saved[0]!.equipment.filter((e) => e.zone === copy.id);
+    expect(copied.length).toBe(data.layout.equipment.filter((e) => e.zone === z.id).length);
+    await waitFor(() => expect(api.setLink).toHaveBeenCalled());
+    const newIds = new Set(copied.map((e) => e.id));
+    expect(vi.mocked(api.setLink).mock.calls.every((c) => newIds.has(c[1]))).toBe(true);
+  });
+
+  it('deleting a floor takes two taps, says what goes, and removes it on save', async () => {
+    const { api, saved } = fakeApi();
+    await openEditor(api);
+    fireEvent.click(screen.getByRole('button', { name: /^Delete this floor/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tap again to confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save layout' }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]!.floors).toHaveLength(data.layout.floors.length - 1);
+  });
 });

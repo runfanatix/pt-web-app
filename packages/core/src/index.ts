@@ -12,3 +12,5 @@ export * from './privacy.ts';
 export * from './clients.ts';
 export * from './share.ts';
 export * from './layout-edit.ts';
+export * from './layout-structs.ts';
+export * from './layout-zones.ts';

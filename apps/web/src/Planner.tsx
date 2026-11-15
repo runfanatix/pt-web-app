@@ -92,6 +92,9 @@ export function Planner({
   const [filter, setFilter] = useState('all');
   const [selZone, setSelZone] = useState<string | null>(null);
   const [selEq, setSelEq] = useState<string | null>(null);
+  const [selStruct, setSelStruct] = useState<string | null>(null);
+  // Machines copied by Duplicate zone: their exercise links are copied once the layout is saved.
+  const copiesRef = useRef<{ from: string; to: string }[]>([]);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [runMsg, setRunMsg] = useState('');
   const [announce, setAnnounce] = useState('');
@@ -253,6 +256,7 @@ export function Planner({
     setDraft(null);
     setSelZone(null);
     setSelEq(null);
+    setSelStruct(null);
     setPart(0);
     setMode(m);
   }
@@ -261,9 +265,28 @@ export function Planner({
     setSaving(true);
     try {
       await layoutApi.save(gym.id, draft);
+      const kept = new Set(draft.equipment.map((e) => e.id));
+      // Machines that no longer exist drop out of the unsent routine.
+      for (const it of session.items) if (!kept.has(it.eid)) dispatch({ type: 'remove', uid: it.uid });
+      // A duplicated zone's machines get the same exercises as the ones they were copied from.
+      const copies = copiesRef.current.filter((c) => kept.has(c.to));
+      copiesRef.current = [];
+      let linkFailed = false;
+      for (const c of copies) {
+        for (const x of library.filter((q) => q.equipmentIds.includes(c.from))) {
+          try {
+            await layoutApi.setLink(x.id, c.to, true);
+          } catch {
+            linkFailed = true;
+          }
+        }
+      }
       setDraft(null);
+      setSelZone(null);
+      setSelEq(null);
+      setSelStruct(null);
       setReload((n) => n + 1);
-      say('Layout saved.');
+      say(linkFailed ? 'Layout saved, but some exercise links could not be copied.' : 'Layout saved.');
     } catch (err) {
       say(`Could not save the layout: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -272,8 +295,10 @@ export function Planner({
   }
   function discardLayout() {
     setDraft(null);
+    copiesRef.current = [];
     setSelZone(null);
     setSelEq(null);
+    setSelStruct(null);
     say('Changes discarded.');
   }
   async function linkExercise(exerciseId: string, equipmentId: string, linked: boolean) {
@@ -293,11 +318,13 @@ export function Planner({
     setFilter('all');
     setSelZone(null);
     setSelEq(null);
+    setSelStruct(null);
   }
   function changeFloor(id: string) {
     setFloorId(id);
     setSelZone(null);
     setSelEq(null);
+    setSelStruct(null);
   }
   function addExercise(eid: string, x: LibraryExercise) {
     dispatch({ type: 'add', eid, exercise: x });
@@ -604,10 +631,28 @@ export function Planner({
                 run={showRun && !editing ? run : null}
                 onSelectZone={(id) => {
                   setSelZone(id);
+                  setSelStruct(null);
                   setPart(0);
                 }}
-                onSelectEq={selectMachine}
-                edit={editing ? { snap: snapOn, part, onLayout: setDraft } : null}
+                onSelectEq={(id) => {
+                  setSelStruct(null);
+                  selectMachine(id);
+                }}
+                edit={
+                  editing
+                    ? {
+                        snap: snapOn,
+                        part,
+                        selStruct,
+                        onSelectStruct: (id) => {
+                          setSelStruct(id);
+                          setSelZone(null);
+                          setSelEq(null);
+                        },
+                        onLayout: setDraft,
+                      }
+                    : null
+                }
               />
             )}
           </div>
@@ -643,8 +688,26 @@ export function Planner({
                 selEq={selEq}
                 part={part}
                 onPart={setPart}
-                onSelectZone={setSelZone}
-                onSelectEq={setSelEq}
+                onSelectZone={(id) => {
+                  setSelZone(id);
+                  if (id) setSelStruct(null);
+                }}
+                onSelectEq={(id) => {
+                  setSelEq(id);
+                  if (id) setSelStruct(null);
+                }}
+                selStruct={selStruct}
+                onSelectStruct={(id) => {
+                  setSelStruct(id);
+                  if (id) {
+                    setSelZone(null);
+                    setSelEq(null);
+                  }
+                }}
+                onGoToFloor={(id) => setFloorId(id)}
+                onCopies={(c) => {
+                  copiesRef.current = [...copiesRef.current, ...c];
+                }}
                 onChange={setDraft}
                 library={library}
                 savedEquipment={new Set((savedLayout?.equipment ?? []).map((e) => e.id))}

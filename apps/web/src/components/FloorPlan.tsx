@@ -3,7 +3,11 @@ import {
   RUN_WORD,
   dropEquipment,
   moveEquipment,
+  moveStructBy,
   moveZoneBy,
+  resizeStructBy,
+  type StructHandle,
+  STRUCT_DEFS,
   partRect,
   resizeZonePart,
   type Handle,
@@ -51,6 +55,9 @@ interface Props {
     snap: boolean;
     /** Which rectangle of a joined zone the grips belong to (0 is the main one). */
     part: number;
+    /** The architectural item being edited, if any. */
+    selStruct?: string | null;
+    onSelectStruct?: (id: string) => void;
     /** Called with the new layout while dragging and when the pointer is let go. */
     onLayout: (l: Layout) => void;
   } | null;
@@ -61,6 +68,48 @@ function onKey(e: KeyboardEvent, action: () => void): void {
     e.preventDefault();
     action();
   }
+}
+
+/** The invisible area that takes a drag on an architectural item while editing (the prototype's structHit). */
+function StructHit({ s }: { s: Layout['structs'][number] }) {
+  const kind = STRUCT_DEFS[s.type]?.kind;
+  if (kind === 'line')
+    return <line className="hit" strokeWidth={18} x1={s.x} y1={s.y} x2={s.x2 ?? s.x} y2={s.y2 ?? s.y} />;
+  if (kind === 'box') return <rect className="hit" x={s.x} y={s.y} width={s.w ?? 0} height={s.h ?? 0} />;
+  const r = Math.max(s.w ?? 0, 20) / 2 + 4;
+  return <rect className="hit" x={s.x - r} y={s.y - r} width={r * 2} height={r * 2} />;
+}
+
+/** Grips for the selected architectural item: round ends for a line, a box with eight for a box, a ring for a symbol. */
+function StructGrips({ s }: { s: Layout['structs'][number] }) {
+  const kind = STRUCT_DEFS[s.type]?.kind;
+  if (kind === 'line') {
+    return (
+      <g className="handles">
+        {(
+          [
+            ['p1', s.x, s.y],
+            ['p2', s.x2 ?? s.x, s.y2 ?? s.y],
+          ] as const
+        ).map(([id, cx, cy]) => (
+          <g key={id} className="hnd" data-h={id}>
+            <circle className="hhit" cx={cx} cy={cy} r={16} />
+            <circle className="hhalo" cx={cx} cy={cy} r={12} />
+            <circle className="hgrip" cx={cx} cy={cy} r={6} />
+          </g>
+        ))}
+      </g>
+    );
+  }
+  if (kind === 'sym') {
+    const r = Math.max(s.w ?? 0, 20) / 2 + 6;
+    return (
+      <g className="handles">
+        <rect className="selbox" x={s.x - r} y={s.y - r} width={r * 2} height={r * 2} rx={4} />
+      </g>
+    );
+  }
+  return <Grips rect={{ x: s.x, y: s.y, w: s.w ?? 0, h: s.h ?? 0 }} />;
 }
 
 /** The selection box and the eight grips (four edges, four corners) of the zone being edited. */
@@ -195,7 +244,7 @@ export function FloorPlan({
   // ---- layout editing: drag a zone, pull a grip, or drag a machine ----
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{
-    kind: 'zone' | 'handle' | 'eq';
+    kind: 'zone' | 'handle' | 'eq' | 'struct' | 'shandle';
     start: Layout;
     id: string;
     handle?: Handle;
@@ -223,7 +272,18 @@ export function FloorPlan({
     const grip = target.closest('[data-h]');
     const marker = target.closest('[data-eq]');
     const zoneEl = target.closest('[data-zone]');
-    if (grip && selZone) {
+    const structEl = target.closest('[data-struct]');
+    if (grip && edit.selStruct) {
+      drag.current = {
+        kind: 'shandle',
+        start: layout,
+        id: edit.selStruct,
+        handle: grip.getAttribute('data-h') as StructHandle as Handle,
+        p0: p,
+        moved: false,
+        cur: layout,
+      };
+    } else if (grip && selZone) {
       drag.current = {
         kind: 'handle',
         start: layout,
@@ -237,6 +297,10 @@ export function FloorPlan({
       const id = marker.getAttribute('data-eq')!;
       onSelectEq(id);
       drag.current = { kind: 'eq', start: layout, id, p0: p, moved: false, cur: layout };
+    } else if (structEl) {
+      const id = structEl.getAttribute('data-struct')!;
+      edit.onSelectStruct?.(id);
+      drag.current = { kind: 'struct', start: layout, id, p0: p, moved: false, cur: layout };
     } else if (zoneEl) {
       const id = zoneEl.getAttribute('data-zone')!;
       onSelectZone(id);
@@ -263,7 +327,11 @@ export function FloorPlan({
         ? moveEquipment(d.start, d.id, p.x, p.y)
         : d.kind === 'zone'
           ? moveZoneBy(d.start, d.id, dx, dy, edit.snap)
-          : resizeZonePart(d.start, d.id, edit.part, d.handle!, dx, dy, edit.snap);
+          : d.kind === 'struct'
+            ? moveStructBy(d.start, d.id, dx, dy, floor.id, edit.snap)
+            : d.kind === 'shandle'
+              ? resizeStructBy(d.start, d.id, d.handle as StructHandle, dx, dy, floor.id, edit.snap)
+              : resizeZonePart(d.start, d.id, edit.part, d.handle!, dx, dy, edit.snap);
     edit.onLayout(d.cur);
   }
 
@@ -276,6 +344,7 @@ export function FloorPlan({
   }
 
   const editZone = edit && selZone && !selEq ? zones.find((z) => z.id === selZone) : undefined;
+  const editStruct = edit?.selStruct ? structs.find((q) => q.id === edit.selStruct) : undefined;
 
   return (
     <svg
@@ -351,8 +420,9 @@ export function FloorPlan({
 
       <g>
         {structs.map((s) => (
-          <g key={s.id} className="st" data-struct={s.id}>
+          <g key={s.id} className={edit && edit.selStruct === s.id ? 'st sel' : 'st'} data-struct={s.id}>
             <StructShape s={s} />
+            {edit && <StructHit s={s} />}
           </g>
         ))}
       </g>
@@ -513,7 +583,8 @@ export function FloorPlan({
               </g>
             );
           })}
-      {editZone && edit && <Grips rect={partRect(editZone, edit.part)} />}
+      {editZone && edit && !editStruct && <Grips rect={partRect(editZone, edit.part)} />}
+      {editStruct && <StructGrips s={editStruct} />}
     </svg>
   );
 }
