@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PT Web App — Personal Trainer Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">PT <span>Pro</span></div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+        <a class="nav-item" data-page="clients">
+          <span class="nav-icon">👤</span> Clients
+        </a>
+        <a class="nav-item" data-page="workouts">
+          <span class="nav-icon">🏋️</span> Workouts
+        </a>
+        <a class="nav-item" data-page="progress">
+          <span class="nav-icon">📈</span> Progress
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Welcome back! Here's your overview.</div>
+        </div>
+        <button class="btn btn-primary">+ Add Client</button>
+      </div>
+
+      <div id="page-content">
+        <!-- Rendered by app.js -->
+      </div>
+    </main>
+
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>
