@@ -5,6 +5,7 @@ import {
   fmtClock,
   isActive,
   isRunView,
+  layoutChanged,
   pdfFileName,
   itemsPerFloor,
   remapItems,
@@ -33,6 +34,8 @@ import { TemplatesPanel } from './components/TemplatesPanel.tsx';
 import { AssignPanel } from './components/clients/AssignPanel.tsx';
 import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
+import { LayoutTab } from './components/LayoutTab.tsx';
+import type { LayoutApi } from './data/layoutApi.ts';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
 import type { ClientsApi, ProfileApi } from './data/clients.ts';
 import type { ShareApi } from './data/share.ts';
@@ -58,6 +61,7 @@ interface Props {
   clientsApi?: ClientsApi | null;
   profileApi?: ProfileApi | null;
   shareApi?: ShareApi | null;
+  layoutApi?: LayoutApi | null;
   onSignOut: () => void;
 }
 
@@ -75,6 +79,7 @@ export function Planner({
   clientsApi = null,
   profileApi = null,
   shareApi = null,
+  layoutApi = null,
   onSignOut,
 }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
@@ -90,6 +95,12 @@ export function Planner({
   const [toast, setToast] = useState<ToastState | null>(null);
   const [runMsg, setRunMsg] = useState('');
   const [announce, setAnnounce] = useState('');
+  // Layout editing works on a copy; nothing reaches the database until Save.
+  const [draft, setDraft] = useState<Layout | null>(null);
+  const [snapOn, setSnapOn] = useState(true);
+  const [part, setPart] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [reload, setReload] = useState(0);
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [clientsError, setClientsError] = useState('');
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
@@ -98,7 +109,7 @@ export function Planner({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hudRef = useRef<HTMLDivElement>(null);
   const gym = gyms.find((g) => g.id === gymId) ?? gyms[0];
-  const gymState = useGymData(loadGym, gym?.id ?? null);
+  const gymState = useGymData(loadGym, gym?.id ?? null, reload);
   const { session, dispatch } = useSession(gym?.id ?? null);
   const rc = useRun(session.items, gym?.id ?? null);
   const run = rc.run;
@@ -123,7 +134,10 @@ export function Planner({
   }, [restEnds]);
 
   const data = gymState.status === 'ready' ? gymState.data : null;
-  const layout: Layout | null = data?.layout ?? null;
+  const savedLayout: Layout | null = data?.layout ?? null;
+  const editing = mode === 'edit';
+  const dirty = !!(savedLayout && draft && layoutChanged(savedLayout, draft));
+  const layout: Layout | null = editing && draft ? draft : savedLayout;
   const library: LibraryExercise[] = data?.library ?? [];
   const activeFloor = layout ? (layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!) : null;
   const equipById = new Map((layout?.equipment ?? []).map((e) => [e.id, e]));
@@ -232,7 +246,48 @@ export function Planner({
     setToast({ msg, view });
     toastTimer.current = setTimeout(() => setToast(null), 3400);
   }
+  function chooseMode(m: Mode) {
+    if (m === mode) return;
+    if (m === 'edit' && runLive) return say('Finish or reset the live run before editing the layout.');
+    if (m === 'plan' && dirty) return say('Save or discard your layout changes first.');
+    setDraft(null);
+    setSelZone(null);
+    setSelEq(null);
+    setPart(0);
+    setMode(m);
+  }
+  async function saveLayout() {
+    if (!draft || !layoutApi || !gym) return;
+    setSaving(true);
+    try {
+      await layoutApi.save(gym.id, draft);
+      setDraft(null);
+      setReload((n) => n + 1);
+      say('Layout saved.');
+    } catch (err) {
+      say(`Could not save the layout: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+  function discardLayout() {
+    setDraft(null);
+    setSelZone(null);
+    setSelEq(null);
+    say('Changes discarded.');
+  }
+  async function linkExercise(exerciseId: string, equipmentId: string, linked: boolean) {
+    if (!layoutApi) return;
+    try {
+      await layoutApi.setLink(exerciseId, equipmentId, linked);
+      setReload((n) => n + 1);
+    } catch (err) {
+      say(`Could not change the link: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   function changeGym(id: string) {
+    if (dirty) return say('Save or discard your layout changes before switching gym.');
+    setDraft(null);
     setGymId(id);
     setFloorId(null);
     setFilter('all');
@@ -446,7 +501,7 @@ export function Planner({
   const popupEq = mode === 'plan' && !runLive && selEq ? equipById.get(selEq) : undefined;
   const hint =
     mode === 'edit'
-      ? 'Layout editing arrives in a later phase. For now the plan is read-only.'
+      ? 'Drag a zone or a machine to move it, pull the grips to resize a zone. Nothing is kept until you press Save layout.'
       : runLive
         ? 'Workout running. Tap a machine on the plan to jump to it, or use Set done and Done, next on the bar above. The rest between sets counts down and buzzes when it is over.'
         : run.status === 'finished'
@@ -469,10 +524,10 @@ export function Planner({
         </div>
         <div className="topright">
           <div className="seg" role="group" aria-label="Mode">
-            <button type="button" aria-pressed={mode === 'plan'} onClick={() => setMode('plan')}>
+            <button type="button" aria-pressed={mode === 'plan'} onClick={() => chooseMode('plan')}>
               Plan session
             </button>
-            <button type="button" aria-pressed={mode === 'edit'} onClick={() => setMode('edit')}>
+            <button type="button" aria-pressed={mode === 'edit'} onClick={() => chooseMode('edit')}>
               Edit layout
             </button>
           </div>
@@ -506,7 +561,17 @@ export function Planner({
         {announce}
       </p>
 
-      <GymBar gyms={gyms} gymId={gym.id} onChange={changeGym} disabled={runLive} />
+      <GymBar
+        gyms={gyms}
+        gymId={gym.id}
+        onChange={changeGym}
+        disabled={runLive}
+        edit={
+          editing && layoutApi
+            ? { dirty, saving, onSave: () => void saveLayout(), onDiscard: discardLayout }
+            : null
+        }
+      />
 
       <main className="grid">
         <section className="mapcol" aria-label="Gym floor map">
@@ -535,10 +600,14 @@ export function Planner({
                 filter={filter}
                 selZone={selZone}
                 selEq={selEq}
-                items={session.items}
-                run={showRun ? run : null}
-                onSelectZone={setSelZone}
+                items={editing ? undefined : session.items}
+                run={showRun && !editing ? run : null}
+                onSelectZone={(id) => {
+                  setSelZone(id);
+                  setPart(0);
+                }}
                 onSelectEq={selectMachine}
+                edit={editing ? { snap: snapOn, part, onLayout: setDraft } : null}
               />
             )}
           </div>
@@ -564,7 +633,26 @@ export function Planner({
             ))}
           </div>
           <div id="panelBody" role="tabpanel" aria-labelledby={`tab-${tab}`} className="panel-body">
-            {tab === 'zone' && layout && activeFloor && (
+            {tab === 'zone' && editing && layout && activeFloor && (
+              <LayoutTab
+                layout={layout}
+                floorId={activeFloor.id}
+                snap={snapOn}
+                onSnap={setSnapOn}
+                selZone={selZone}
+                selEq={selEq}
+                part={part}
+                onPart={setPart}
+                onSelectZone={setSelZone}
+                onSelectEq={setSelEq}
+                onChange={setDraft}
+                library={library}
+                savedEquipment={new Set((savedLayout?.equipment ?? []).map((e) => e.id))}
+                onLink={(x, e, on) => void linkExercise(x, e, on)}
+                say={say}
+              />
+            )}
+            {tab === 'zone' && !editing && layout && activeFloor && (
               <ZonesTab
                 layout={layout}
                 library={library}

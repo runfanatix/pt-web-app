@@ -4,6 +4,7 @@ import { tokenFromPath } from '@pt/core';
 import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
 import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
+import { createLayoutApi } from './data/layoutApi.ts';
 import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
 import { createClientsApi, createProfileApi, type ClientsApi, type ProfileApi } from './data/clients.ts';
@@ -41,6 +42,7 @@ function SignedIn() {
   const state = useGyms(client);
   const loadGym = useMemo(() => createGymDataLoader(client), [client]);
   const shareApi = useMemo(() => createShareApi(client), [client]);
+  const layoutApi = useMemo(() => createLayoutApi(client), [client]);
   const [templates, setTemplates] = useState<TemplateApi | null>(null);
   const [history, setHistory] = useState<HistoryApi | null>(null);
   const [clientsApi, setClientsApi] = useState<ClientsApi | null>(null);
@@ -78,6 +80,7 @@ function SignedIn() {
       clientsApi={clientsApi}
       profileApi={profileApi}
       shareApi={shareApi}
+      layoutApi={layoutApi}
       onSignOut={() => void signOut()}
     />
   );

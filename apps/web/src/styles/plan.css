@@ -278,3 +278,66 @@
   color: var(--bg);
   font: 600 10px var(--f-mono);
 }
+
+/* Layout editing: grips, selection box, drag cursors */
+.editing #map {
+  touch-action: none;
+}
+.editing .mk {
+  cursor: grab;
+}
+.editing .zone rect,
+.editing .zone path.zp {
+  cursor: move;
+}
+.handles .selbox {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+.hnd {
+  cursor: pointer;
+}
+.hnd .hhit {
+  fill: transparent;
+  pointer-events: all;
+}
+.hnd .hhalo {
+  fill: var(--accent);
+  opacity: 0.3;
+  pointer-events: none;
+}
+.hnd .hgrip {
+  fill: var(--paper);
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  pointer-events: none;
+}
+.hnd:hover .hhalo {
+  opacity: 0.5;
+}
+.hnd[data-h='n'],
+.hnd[data-h='s'] {
+  cursor: ns-resize;
+}
+.hnd[data-h='e'],
+.hnd[data-h='w'] {
+  cursor: ew-resize;
+}
+.hnd[data-h='nw'],
+.hnd[data-h='se'] {
+  cursor: nwse-resize;
+}
+.hnd[data-h='ne'],
+.hnd[data-h='sw'] {
+  cursor: nesw-resize;
+}
+.gstat.dirty {
+  color: var(--accent);
+}
+.linkrows {
+  max-height: 220px;
+  overflow: auto;
+}
