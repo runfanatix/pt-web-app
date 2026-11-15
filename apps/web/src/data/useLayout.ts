@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { EXERCISES_SELECT, FLOORS_SELECT, gymDataFromRows, type GymData } from '@pt/core';
 
@@ -27,15 +27,18 @@ export function createGymDataLoader(client: SupabaseClient): GymDataLoader {
   };
 }
 
-export function useGymData(load: GymDataLoader, gymId: string | null): GymDataState {
+/** `version` re-reads the same gym (after a save) without blanking the plan while it loads. */
+export function useGymData(load: GymDataLoader, gymId: string | null, version = 0): GymDataState {
   const [state, setState] = useState<GymDataState>({ status: gymId ? 'loading' : 'idle' });
+  const lastGym = useRef<string | null>(null);
   useEffect(() => {
     if (!gymId) {
       setState({ status: 'idle' });
       return;
     }
     let active = true;
-    setState({ status: 'loading' });
+    if (lastGym.current !== gymId) setState({ status: 'loading' });
+    lastGym.current = gymId;
     load(gymId).then(
       (data) => active && setState({ status: 'ready', data }),
       (err: unknown) =>
@@ -44,6 +47,6 @@ export function useGymData(load: GymDataLoader, gymId: string | null): GymDataSt
     return () => {
       active = false;
     };
-  }, [load, gymId]);
+  }, [load, gymId, version]);
   return state;
 }

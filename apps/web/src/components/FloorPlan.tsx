@@ -1,6 +1,12 @@
-import type { KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import {
   RUN_WORD,
+  dropEquipment,
+  moveEquipment,
+  moveZoneBy,
+  partRect,
+  resizeZonePart,
+  type Handle,
   fmtClock,
   machineRun,
   routeForFloor,
@@ -40,6 +46,14 @@ interface Props {
   run?: RunState | null;
   onSelectZone: (id: string | null) => void;
   onSelectEq: (id: string | null) => void;
+  /** Set while editing the layout: drag zones and machines, pull the grips. The plan is then drawn without the routine. */
+  edit?: {
+    snap: boolean;
+    /** Which rectangle of a joined zone the grips belong to (0 is the main one). */
+    part: number;
+    /** Called with the new layout while dragging and when the pointer is let go. */
+    onLayout: (l: Layout) => void;
+  } | null;
 }
 
 function onKey(e: KeyboardEvent, action: () => void): void {
@@ -47,6 +61,53 @@ function onKey(e: KeyboardEvent, action: () => void): void {
     e.preventDefault();
     action();
   }
+}
+
+/** The selection box and the eight grips (four edges, four corners) of the zone being edited. */
+function Grips({ rect }: { rect: { x: number; y: number; w: number; h: number } }) {
+  const { x, y, w, h } = rect;
+  const x1 = x + w;
+  const y1 = y + h;
+  const mx = x + w / 2;
+  const my = y + h / 2;
+  const corner = (id: Handle, cx: number, cy: number) => (
+    <g key={id} className="hnd" data-h={id}>
+      <circle className="hhit" cx={cx} cy={cy} r={16} />
+      <circle className="hhalo" cx={cx} cy={cy} r={11} />
+      <rect className="hgrip" x={cx - 6} y={cy - 6} width={12} height={12} rx={2.5} />
+    </g>
+  );
+  const edge = (id: Handle, cx: number, cy: number, horizontal: boolean) => {
+    const gw = horizontal ? 28 : 9;
+    const gh = horizontal ? 9 : 28;
+    return (
+      <g key={id} className="hnd" data-h={id}>
+        <rect className="hhit" x={cx - 16} y={cy - 16} width={32} height={32} />
+        <rect
+          className="hhalo"
+          x={cx - gw / 2 - 3}
+          y={cy - gh / 2 - 3}
+          width={gw + 6}
+          height={gh + 6}
+          rx={7}
+        />
+        <rect className="hgrip" x={cx - gw / 2} y={cy - gh / 2} width={gw} height={gh} rx={3} />
+      </g>
+    );
+  };
+  return (
+    <g className="handles">
+      <rect className="selbox" x={x} y={y} width={w} height={h} />
+      {edge('n', mx, y, true)}
+      {edge('s', mx, y1, true)}
+      {edge('w', x, my, false)}
+      {edge('e', x1, my, false)}
+      {corner('nw', x, y)}
+      {corner('ne', x1, y)}
+      {corner('sw', x, y1)}
+      {corner('se', x1, y1)}
+    </g>
+  );
 }
 
 /** A small pill above a machine telling where the route goes on another floor. */
@@ -87,6 +148,7 @@ export function FloorPlan({
   run = null,
   onSelectZone,
   onSelectEq,
+  edit = null,
 }: Props) {
   const floor = layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!;
   const zones = layout.zones.filter((z) => z.floor === floor.id);
@@ -130,9 +192,100 @@ export function FloorPlan({
   const minWidth = Math.round(720 + Math.max(0, floor.w - 1000) * 0.4);
   const empty = !zones.length && !structs.length && !equipment.length;
 
+  // ---- layout editing: drag a zone, pull a grip, or drag a machine ----
+  const svgRef = useRef<SVGSVGElement>(null);
+  const drag = useRef<{
+    kind: 'zone' | 'handle' | 'eq';
+    start: Layout;
+    id: string;
+    handle?: Handle;
+    p0: { x: number; y: number };
+    moved: boolean;
+    cur: Layout;
+  } | null>(null);
+
+  /** The pointer position in plan coordinates (the plan is scaled to fit its box). */
+  function planPoint(ev: { clientX: number; clientY: number }): { x: number; y: number } {
+    const svg = svgRef.current;
+    const m = svg?.getScreenCTM?.();
+    if (!svg || !m) return { x: ev.clientX, y: ev.clientY };
+    const pt = svg.createSVGPoint();
+    pt.x = ev.clientX;
+    pt.y = ev.clientY;
+    const p = pt.matrixTransform(m.inverse());
+    return { x: p.x, y: p.y };
+  }
+
+  function onDown(ev: PointerEvent<SVGSVGElement>) {
+    if (!edit || (ev.button != null && ev.button > 0)) return;
+    const target = ev.target as Element;
+    const p = planPoint(ev);
+    const grip = target.closest('[data-h]');
+    const marker = target.closest('[data-eq]');
+    const zoneEl = target.closest('[data-zone]');
+    if (grip && selZone) {
+      drag.current = {
+        kind: 'handle',
+        start: layout,
+        id: selZone,
+        handle: grip.getAttribute('data-h') as Handle,
+        p0: p,
+        moved: false,
+        cur: layout,
+      };
+    } else if (marker) {
+      const id = marker.getAttribute('data-eq')!;
+      onSelectEq(id);
+      drag.current = { kind: 'eq', start: layout, id, p0: p, moved: false, cur: layout };
+    } else if (zoneEl) {
+      const id = zoneEl.getAttribute('data-zone')!;
+      onSelectZone(id);
+      drag.current = { kind: 'zone', start: layout, id, p0: p, moved: false, cur: layout };
+    } else return;
+    try {
+      ev.currentTarget.setPointerCapture(ev.pointerId);
+    } catch {
+      /* capture is optional */
+    }
+    ev.preventDefault();
+  }
+
+  function onMove(ev: PointerEvent<SVGSVGElement>) {
+    const d = drag.current;
+    if (!d || !edit) return;
+    const p = planPoint(ev);
+    const dx = p.x - d.p0.x;
+    const dy = p.y - d.p0.y;
+    if (d.kind !== 'eq' && !d.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+    d.moved = true;
+    d.cur =
+      d.kind === 'eq'
+        ? moveEquipment(d.start, d.id, p.x, p.y)
+        : d.kind === 'zone'
+          ? moveZoneBy(d.start, d.id, dx, dy, edit.snap)
+          : resizeZonePart(d.start, d.id, edit.part, d.handle!, dx, dy, edit.snap);
+    edit.onLayout(d.cur);
+  }
+
+  function onUp() {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || !edit || !d.moved) return;
+    // Letting go of a machine inside another zone puts it in that zone.
+    edit.onLayout(d.kind === 'eq' ? dropEquipment(d.cur, d.id) : d.cur);
+  }
+
+  const editZone = edit && selZone && !selEq ? zones.find((z) => z.id === selZone) : undefined;
+
   return (
     <svg
       id="map"
+      ref={svgRef}
+      className={edit ? 'editing' : undefined}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
       viewBox={`0 0 ${floor.w} ${floor.h}`}
       style={{ minWidth }}
       role="group"
@@ -166,7 +319,7 @@ export function FloorPlan({
         const an = zoneLabelRect(z);
         const cn = zoneCountRect(z);
         const joined = (z.parts?.length ?? 0) > 0;
-        const toggle = () => onSelectZone(selZone === z.id ? null : z.id);
+        const toggle = () => onSelectZone(edit || selZone !== z.id ? z.id : null);
         return (
           <g
             key={z.id}
@@ -247,7 +400,7 @@ export function FloorPlan({
         const lines = wrapName(e.name);
         const place = (multiFloor ? `${floorName.get(e.floor) ?? ''} · ` : '') + (zoneName.get(e.zone) ?? '');
         const letter = (TYPE_LETTERS[e.type] ?? TYPE_LETTERS.space!).letter;
-        const toggle = () => onSelectEq(selEq === e.id ? null : e.id);
+        const toggle = () => onSelectEq(edit || selEq !== e.id ? e.id : null);
         const step =
           !ri && nums.length ? `, session step${nums.length > 1 ? 's' : ''} ${nums.join(' and ')}` : '';
         const word = live ? `, ${RUN_WORD[ri.st as keyof typeof RUN_WORD]}` : '';
@@ -360,6 +513,7 @@ export function FloorPlan({
               </g>
             );
           })}
+      {editZone && edit && <Grips rect={partRect(editZone, edit.part)} />}
     </svg>
   );
 }

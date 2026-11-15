@@ -112,6 +112,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** Every layout the app sent to save_gym_layout. */
+  layoutSaves: { p_gym_id: string; p_layout: Record<string, unknown[]> }[];
 }
 
 export function createMockDb(): MockDb {
@@ -121,6 +123,7 @@ export function createMockDb(): MockDb {
     clients: [],
     dataRequests: [],
     shareLinks: [],
+    layoutSaves: [],
     profile: {
       business_name: '',
       address: '',
@@ -348,6 +351,11 @@ export async function serveApi(page: Page, db: MockDb): Promise<void> {
         route,
         shareLinks.filter((l) => l.programme_id === pid),
       );
+    }
+
+    if (path.endsWith('/rest/v1/rpc/save_gym_layout')) {
+      db.layoutSaves.push(req.postDataJSON() as MockDb['layoutSaves'][number]);
+      return json(route, null);
     }
 
     // The one thing a visitor who is not logged in may call: what a client's link shows.
