@@ -309,12 +309,13 @@ describe('the Session tab', () => {
     expect(screen.getByLabelText('Exercise')).toHaveValue(x.name);
   });
 
-  it("does not mix one gym's routine into another's", async () => {
+  it('takes the routine to the other gym and back (the machines are the same here)', async () => {
     const first = mount({ gyms: [bedfordview, second] });
     await ready();
     await addFrom(first.container, machineA.id);
     fireEvent.change(screen.getByRole('combobox', { name: 'Select gym' }), { target: { value: 'g2' } });
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Session (0)' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^Opened /)).toBeInTheDocument());
+    expect(screen.getByRole('tab', { name: 'Session (1)' })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: 'Select gym' }), { target: { value: 'g1' } });
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Session (1)' })).toBeInTheDocument());
   });

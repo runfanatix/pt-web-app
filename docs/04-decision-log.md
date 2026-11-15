@@ -100,3 +100,13 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **Joined zones**: only touching zones on the same floor (within 12 px, sharing 16 px of edge) can be joined; a join closes small gaps; a zone can have at most 12 rectangles; a loose part can be split off as its own zone.
 - **Rules are pure and parity-tested**: `layout-edit.ts`, `layout-structs.ts` and `layout-zones.ts` are compared with the prototype's own functions (resize, fit, join, split, duplicate) on hundreds of random cases.
 - **Known limit**: on a phone the plan is scaled down, so the grips are small to hit with a finger; the number fields in the Layout tab do the same job.
+
+## Phase 7 decisions (multi-gym)
+
+- **Switching carries the routine.** The routine in the Session tab goes with the trainer: its exercises are remapped onto the machines of the gym they open (same machine, else same name and kind, else a machine the exercise is linked to), using the rules already used for templates. Exercises with no match are removed, and the trainer is told how many first. If the routine is empty, the other gym's own unsent draft is kept. This replaces the earlier behaviour of one separate draft per gym.
+- **The question is asked only when needed**: unsaved layout changes (Save layout and switch / Discard changes and switch / Cancel) or exercises that would be removed (Switch / Cancel). Otherwise the switch just happens. A live run blocks switching.
+- **Adding a gym**: a blank plan (one "Ground floor", 1000 x 620), or a copy of the plan as it is on screen (unsaved edits included; the gym it came from goes back to as saved). Copies get new ids for every floor, zone, structure and machine, and each machine's exercise links are copied. **Not built**: the prototype's "Virgin Active Bedfordview starting layout" option, because the real app has no built-in gym (the Bedfordview plan is imported once with the import script).
+- **Duplicating a gym** copies its saved plan, links and details ("Branch copy"); it does not open it. A name already in use gets a number.
+- **If saving a new gym's plan fails**, the half-made gym row is deleted again.
+- **Deleting a gym** (never the open one, never the last one, two taps) deletes its plan, machines and templates. Finished workouts and client programmes are kept, with the gym left blank.
+- **No new migration**: gyms, layouts and links use the existing tables and `save_gym_layout`; the database tests cover creating, copying, deleting and isolation between trainers.

@@ -4,6 +4,7 @@ import { tokenFromPath } from '@pt/core';
 import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
 import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
+import { createGymsApi, type GymsApi } from './data/gymsApi.ts';
 import { createLayoutApi } from './data/layoutApi.ts';
 import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
@@ -47,6 +48,7 @@ function SignedIn() {
   const [history, setHistory] = useState<HistoryApi | null>(null);
   const [clientsApi, setClientsApi] = useState<ClientsApi | null>(null);
   const [profileApi, setProfileApi] = useState<ProfileApi | null>(null);
+  const [gymsApi, setGymsApi] = useState<GymsApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -56,6 +58,7 @@ function SignedIn() {
         setHistory(createHistoryApi(client, id));
         setClientsApi(createClientsApi(client, id));
         setProfileApi(createProfileApi(client, id));
+        setGymsApi(createGymsApi(client, id));
       },
       () => {
         if (!active) return;
@@ -63,6 +66,7 @@ function SignedIn() {
         setHistory(null);
         setClientsApi(null);
         setProfileApi(null);
+        setGymsApi(null);
       },
     );
     return () => {
@@ -81,6 +85,8 @@ function SignedIn() {
       profileApi={profileApi}
       shareApi={shareApi}
       layoutApi={layoutApi}
+      gymsApi={gymsApi}
+      onGymsChanged={state.refresh}
       onSignOut={() => void signOut()}
     />
   );

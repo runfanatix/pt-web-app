@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GymSummarySchema, type GymSummary } from '@pt/core';
 
@@ -18,8 +18,12 @@ export async function fetchGyms(client: SupabaseClient): Promise<GymSummary[]> {
   return GymSummarySchema.array().parse(data ?? []);
 }
 
-export function useGyms(client: SupabaseClient): GymState {
+/** The trainer's gyms. `refresh` reads them again without blanking the screen (after adding, editing or deleting one). */
+export function useGyms(client: SupabaseClient): GymState & { refresh: () => Promise<void> } {
   const [state, setState] = useState<GymState>({ status: 'loading' });
+  const refresh = useCallback(async () => {
+    setState({ status: 'ready', gyms: await fetchGyms(client) });
+  }, [client]);
   useEffect(() => {
     let active = true;
     fetchGyms(client).then(
@@ -31,5 +35,5 @@ export function useGyms(client: SupabaseClient): GymState {
       active = false;
     };
   }, [client]);
-  return state;
+  return { ...state, refresh };
 }

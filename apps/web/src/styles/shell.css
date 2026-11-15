@@ -323,3 +323,14 @@ code {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.gask {
+  flex: 1 1 100%;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--paper);
+}
+.gask p {
+  margin: 0 0 8px;
+}
