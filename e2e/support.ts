@@ -112,6 +112,13 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** Manufacturers with their models, shaped like the rows the app reads. */
+  catalogue: {
+    id: string;
+    trainer_id: string | null;
+    name: string;
+    catalogue_items: Record<string, unknown>[];
+  }[];
   /** The trainer's gyms (the first is the imported Bedfordview). */
   gyms: Record<string, unknown>[];
   /** Every layout the app sent to save_gym_layout. */
@@ -126,6 +133,7 @@ export function createMockDb(): MockDb {
     dataRequests: [],
     shareLinks: [],
     layoutSaves: [],
+    catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
     profile: {
       business_name: '',
@@ -198,6 +206,57 @@ export async function serveApi(page: Page, db: MockDb): Promise<void> {
       }
       return json(route, db.gyms);
     }
+    if (path.endsWith('/rest/v1/manufacturers')) {
+      const mid = (url.searchParams.get('id') ?? '').replace('eq.', '');
+      if (method === 'POST') {
+        const body = req.postDataJSON() as { name: string; trainer_id: string };
+        const row = {
+          id: `mk-${db.catalogue.length + 1}`,
+          trainer_id: body.trainer_id,
+          name: body.name,
+          catalogue_items: [],
+        };
+        db.catalogue.push(row);
+        return json(route, { id: row.id });
+      }
+      if (method === 'PATCH') {
+        Object.assign(
+          db.catalogue.find((m) => m.id === mid) ?? {},
+          req.postDataJSON() as Record<string, unknown>,
+        );
+        return empty(route);
+      }
+      if (method === 'DELETE') {
+        const i = db.catalogue.findIndex((m) => m.id === mid);
+        if (i >= 0) db.catalogue.splice(i, 1);
+        return empty(route);
+      }
+      return json(route, db.catalogue);
+    }
+    if (path.endsWith('/rest/v1/catalogue_items')) {
+      const iid = (url.searchParams.get('id') ?? '').replace('eq.', '');
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        const maker = db.catalogue.find((m) => m.id === body.manufacturer_id);
+        const row = { ...body, id: `it-${db.catalogue.flatMap((m) => m.catalogue_items).length + 1}` };
+        maker?.catalogue_items.push(row);
+        return json(route, { id: row.id });
+      }
+      if (method === 'PATCH') {
+        for (const m of db.catalogue)
+          Object.assign(
+            m.catalogue_items.find((i) => i.id === iid) ?? {},
+            req.postDataJSON() as Record<string, unknown>,
+          );
+        return empty(route);
+      }
+      if (method === 'DELETE') {
+        for (const m of db.catalogue) m.catalogue_items = m.catalogue_items.filter((i) => i.id !== iid);
+        return empty(route);
+      }
+      return json(route, []);
+    }
+    if (path.endsWith('/rest/v1/equipment')) return json(route, []);
     if (path.endsWith('/rest/v1/exercise_equipment'))
       return method === 'GET' ? json(route, []) : empty(route);
     if (path.endsWith('/rest/v1/floors')) {

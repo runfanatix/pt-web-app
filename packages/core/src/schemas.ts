@@ -62,6 +62,8 @@ export const EquipmentSchema = z.object({
   muscles: z.array(MuscleSchema).default([]),
   notes: text(1000).default(''),
   floor: z.string().min(1),
+  /** The catalogue model this machine is, if known. */
+  catalogueId: z.string().nullable().optional(),
 });
 
 export const ExerciseSchema = z.object({

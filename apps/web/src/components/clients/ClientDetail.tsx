@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { ModelsContext } from '../../data/catalogueApi.ts';
 import {
   ClientSchema,
   buildClientExport,
@@ -61,6 +62,7 @@ export function ClientDetail({
   shareApi = null,
   shareContext = null,
 }: Props) {
+  const models = useContext(ModelsContext);
   const [draft, setDraft] = useState<Client>(record.client);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -407,6 +409,7 @@ export function ClientDetail({
                           items: p.items,
                           layout: p.gymId === shareContext.gymId ? shareContext.layout : null,
                           library: shareContext.library,
+                          models,
                         }).pdf
                       }
                       whatsapp={c.whatsapp}

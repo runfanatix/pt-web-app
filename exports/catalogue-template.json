@@ -1,0 +1,20 @@
+{
+  "manufacturers": [
+    {
+      "name": "Example Maker (replace me)",
+      "items": [
+        {
+          "model": "Example Chest Press",
+          "code": "EX-0001",
+          "kind": "machine",
+          "muscles": ["chest", "shoulders", "arms"],
+          "specs": [
+            { "label": "Weight stack", "value": "100 kg" },
+            { "label": "Resistance", "value": "Pin loaded" }
+          ],
+          "notes": "This is a template row showing the format. Delete it and add your own."
+        }
+      ]
+    }
+  ]
+}

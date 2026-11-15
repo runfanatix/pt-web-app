@@ -16,10 +16,16 @@ import {
   setEquipmentZone,
   setZoneCategory,
   setZoneNumber,
+  assignModel,
+  catalogueIndex,
+  emptyCatalogue,
+  modelName,
+  type Catalogue,
   type Layout,
   type LibraryExercise,
 } from '@pt/core';
 import { ConfirmButton } from './ConfirmButton.tsx';
+import { SpecList } from './ModelLine.tsx';
 import { TYPE_LETTERS } from './FloorPlan.tsx';
 import { newUid } from '../session/sessionState.ts';
 import { FloorCard, StructCard, StructKey, ZoneShaping } from './LayoutPanels.tsx';
@@ -41,6 +47,8 @@ interface Props {
   selStruct: string | null;
   onSelectStruct: (id: string | null) => void;
   onGoToFloor: (id: string) => void;
+  catalogue: Catalogue | null;
+  onOpenCatalogue: () => void;
   /** Machines copied by a duplicate, whose exercise links are copied after the layout is saved. */
   onCopies: (copies: { from: string; to: string }[]) => void;
   /** A change to the working copy. */
@@ -62,6 +70,14 @@ export function LayoutTab(p: Props) {
   const [newType, setNewType] = useState<Equip['type']>('machine');
   const [newMuscle, setNewMuscle] = useState<Equip['muscles'][number]>('chest');
   const [filter, setFilter] = useState('');
+  const [newModel, setNewModel] = useState('');
+  const [takeName, setTakeName] = useState(true);
+  const [takeDetails, setTakeDetails] = useState(true);
+  const cat = p.catalogue ?? emptyCatalogue();
+  const index = catalogueIndex(cat);
+  const eqModel = eq?.catalogueId ? index.get(eq.catalogueId) : undefined;
+  const [pickMaker, setPickMaker] = useState('');
+  const makerForEq = pickMaker || eqModel?.manufacturer.id || '';
 
   const rect = zone ? partRect(zone, p.part) : null;
   const machinesIn = zone ? layout.equipment.filter((e) => e.zone === zone.id).length : 0;
@@ -70,17 +86,21 @@ export function LayoutTab(p: Props) {
   function addMachine() {
     if (!addTarget) return p.say('Add a zone first.');
     const id = newUid();
-    const next = addEquipment(layout, {
+    const entry = newModel ? index.get(newModel) : undefined;
+    const name = newName.trim() || (entry ? entry.item.model : '');
+    let next = addEquipment(layout, {
       id,
-      name: newName,
+      name,
       zoneId: addTarget,
-      type: newType,
-      muscle: newMuscle,
+      type: entry ? entry.item.kind : newType,
+      muscle: entry?.item.muscles[0] ?? newMuscle,
     });
     if (next === layout) return p.say('Give the machine a name.');
+    if (entry) next = assignModel(next, id, entry, { copyDetails: true });
     onChange(next);
     p.onSelectEq(id);
     setNewName('');
+    setNewModel('');
   }
 
   const numberField = (label: string, key: 'x' | 'y' | 'w' | 'h') => (
@@ -236,6 +256,20 @@ export function LayoutTab(p: Props) {
             Machine name
             <input type="text" value={newName} maxLength={60} onChange={(e) => setNewName(e.target.value)} />
           </label>
+          <label className="wide">
+            Real machine (optional)
+            <select value={newModel} onChange={(e) => setNewModel(e.target.value)}>
+              <option value="">Not from the catalogue</option>
+              {cat.items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {modelName({
+                    item: i,
+                    manufacturer: cat.manufacturers.find((m) => m.id === i.manufacturerId)!,
+                  })}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Kind
             <select value={newType} onChange={(e) => setNewType(e.target.value as Equip['type'])}>
@@ -328,6 +362,93 @@ export function LayoutTab(p: Props) {
               />
             </label>
           </div>
+          <h4>Real machine</h4>
+          {cat.manufacturers.length === 0 ? (
+            <p className="sub">
+              Add manufacturers and models in the{' '}
+              <button type="button" className="link" onClick={p.onOpenCatalogue}>
+                Catalogue
+              </button>{' '}
+              to tag this machine with what it really is.
+            </p>
+          ) : (
+            <>
+              <div className="fields">
+                <label>
+                  Manufacturer
+                  <select
+                    value={makerForEq}
+                    onChange={(e) => {
+                      setPickMaker(e.target.value);
+                      if (eq.catalogueId && e.target.value !== eqModel?.manufacturer.id)
+                        onChange(assignModel(layout, eq.id, null));
+                    }}
+                  >
+                    <option value="">None</option>
+                    {cat.manufacturers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Model
+                  <select
+                    value={eq.catalogueId ?? ''}
+                    disabled={!makerForEq}
+                    onChange={(e) =>
+                      onChange(
+                        assignModel(
+                          layout,
+                          eq.id,
+                          e.target.value ? (index.get(e.target.value) ?? null) : null,
+                          {
+                            rename: takeName,
+                            copyDetails: takeDetails,
+                          },
+                        ),
+                      )
+                    }
+                  >
+                    <option value="">No model chosen</option>
+                    {cat.items
+                      .filter((i) => i.manufacturerId === makerForEq)
+                      .map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.code ? `${i.model} (${i.code})` : i.model}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              </div>
+              <label className="chk">
+                <input type="checkbox" checked={takeName} onChange={(e) => setTakeName(e.target.checked)} />
+                Use the model name as this machine’s name
+              </label>
+              <label className="chk">
+                <input
+                  type="checkbox"
+                  checked={takeDetails}
+                  onChange={(e) => setTakeDetails(e.target.checked)}
+                />
+                Use the model’s kind and muscles
+              </label>
+              {eqModel && (
+                <>
+                  <p className="sub">{modelName(eqModel)}</p>
+                  <SpecList entry={eqModel} />
+                </>
+              )}
+              <p className="sub">
+                Not in the list?{' '}
+                <button type="button" className="link" onClick={p.onOpenCatalogue}>
+                  Add it in the Catalogue
+                </button>
+                .
+              </p>
+            </>
+          )}
           <h4>Exercises on this machine</h4>
           {!p.savedEquipment.has(eq.id) ? (
             <p className="sub">Save the layout first, then choose which exercises this machine can do.</p>

@@ -1,5 +1,7 @@
 import { LEVEL_NAMES, exercisesFor, rxText, type Layout, type LibraryExercise } from '@pt/core';
 import { TYPE_LETTERS } from './FloorPlan.tsx';
+import { ModelLine, SpecList } from './ModelLine.tsx';
+import { useModelOf } from '../data/catalogueApi.ts';
 
 type Equip = Layout['equipment'][number];
 
@@ -18,6 +20,7 @@ interface Props {
  */
 export function ZonesTab({ layout, library, floorId, selEq, onSelectEq, onAdd }: Props) {
   const selected = selEq ? layout.equipment.find((e) => e.id === selEq) : undefined;
+  const selectedModel = useModelOf(selected);
   const zones = layout.zones.filter((z) => z.floor === floorId);
   const zoneName = new Map(layout.zones.map((z) => [z.id, z.name]));
   const floorName = new Map(layout.floors.map((f) => [f.id, f.name]));
@@ -32,6 +35,7 @@ export function ZonesTab({ layout, library, floorId, selEq, onSelectEq, onAdd }:
             <span className="dot">{(TYPE_LETTERS[selected.type] ?? TYPE_LETTERS.space!).letter}</span>
             <div>
               <h3>{selected.name}</h3>
+              <ModelLine equipment={selected} />
               <p className="sub">
                 {place(selected)} · {(TYPE_LETTERS[selected.type] ?? TYPE_LETTERS.space!).name}
               </p>
@@ -52,6 +56,7 @@ export function ZonesTab({ layout, library, floorId, selEq, onSelectEq, onAdd }:
               </span>
             ))}
           </div>
+          <SpecList entry={selectedModel} />
           {selected.notes && <p className="sub">{selected.notes}</p>}
           <h4>Linked exercises ({exercisesFor(library, selected.id).length})</h4>
           {exercisesFor(library, selected.id).length ? (

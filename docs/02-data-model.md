@@ -83,6 +83,8 @@ zones(id, floor_id, name, category, x, y, w, h)            -- primary rectangle
 zone_parts(id, zone_id, x, y, w, h, position)              -- extra rectangles of a joined zone
 structs(id, floor_id, type, x, y, w, h, x2, y2, rotation, label, shared)
 equipment(id, zone_id, name, type, x, y, muscles text[], notes, catalogue_item_id null)
+manufacturers(id, trainer_id null = shared, name)
+catalogue_items(id, trainer_id null = shared, manufacturer_id, model_name, code, kind, muscles text[], specs jsonb [{label, value}], notes)
 exercises(id, trainer_id null /* null = built-in */, name, muscles text[], level, sets, reps, rest, cue)
 exercise_equipment(exercise_id, equipment_id)               -- links, per gym via equipment
 clients(id, trainer_id, name, whatsapp, email, emergency_*, plan, sub_status, per_week, sessions_left, renewal,

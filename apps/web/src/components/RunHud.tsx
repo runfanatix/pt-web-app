@@ -10,6 +10,7 @@ import {
   type SessionItem,
 } from '@pt/core';
 import { alertsEnabled, setAlertsEnabled } from '../lib/alerts.ts';
+import { ModelLine } from './ModelLine.tsx';
 
 type Equip = Layout['equipment'][number];
 
@@ -140,6 +141,7 @@ export function RunHud({
           {multiSet && sp ? ` · set ${sp.setNo} of ${sp.sets}` : ''}
         </span>
         <strong>{e ? e.name : 'Machine'}</strong>
+        {e && <ModelLine equipment={e} />}
         <span className="sub">
           {resting && sp
             ? `Rest, then set ${sp.setNo} of ${sp.sets}`
