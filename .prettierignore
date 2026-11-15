@@ -1,0 +1,14 @@
+node_modules
+dist
+design-reference
+Nicks tools
+prototype
+exports
+docs
+pnpm-lock.yaml
+playwright-report
+test-results
+.claude
+*.md
+packages/core/src/import-prototype*.ts
+scripts/import-prototype.ts

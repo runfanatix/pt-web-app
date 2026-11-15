@@ -71,7 +71,7 @@ CLAUDE.md                     this file
 README.md                     handoff package overview
 docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script
 prototype/                    FROZEN reference (zone-planner-v11.html + Playwright scenarios). Never edit.
-apps/web/                     React + Vite app (Phase 0: not created yet)
+apps/web/                     React + Vite + TypeScript app (shell only so far)
 packages/core/                pure TypeScript: geometry, remap, route order, snapshot, Zod schemas, importer
 scripts/                      CLI scripts (import-prototype.ts)
 supabase/migrations/          SQL migrations (Phase 1)
@@ -82,12 +82,13 @@ Nicks tools/                  library of Nick Saraev's skills/templates; copy fr
 design-reference/             external DESIGN.md collection (gitignored, read-only)
 ```
 
-Current status: the repository holds the specification, the importer and the prototype. No app code exists yet; start at **Phase 0** in `docs/03-build-plan.md`.
+Current status: **Phase 0 (scaffold) is done.** pnpm workspace, ESLint, Prettier, Vitest, Playwright (390 px and 1280 px projects) and CI are in place, and `apps/web` renders the app shell (header, mode switch, gym bar, seven tabs) using the prototype's tokens. Next is **Phase 1** (domain, Zod schemas, SQL migrations, Supabase auth and RLS). Phase 1 depends on the owner's answers to open questions 1 and 7 in `docs/04-decision-log.md` (hosting, POPIA); ask before building it.
 
-## Commands (once Phase 0 is scaffolded; keep this list current)
+## Commands (run from the repo root; needs Node 20+ and pnpm 12, `npm i -g pnpm`)
 
-- `pnpm dev` run the web app; `pnpm build`; `pnpm lint`; `pnpm typecheck`
-- `pnpm test` Vitest (packages/core); `pnpm e2e` Playwright
+- `pnpm install` then `pnpm dev` (http://localhost:5173); `pnpm build`; `pnpm lint`; `pnpm format:check` (`pnpm format` to fix); `pnpm typecheck`
+- `pnpm test` Vitest (core: 14 importer tests; web: shell tests); `pnpm e2e` Playwright (builds and previews the app on :4173; first time run `pnpm exec playwright install chromium`)
+- Handoff files `packages/core/src/import-prototype*.ts` and `scripts/import-prototype.ts` are deliberately excluded from Prettier; ESLint ignores unused caught errors for them. The tsconfig does not use `noUncheckedIndexedAccess` because the tested importer predates it.
 - `npx tsx scripts/import-prototype.ts --file exports/bedfordview-v11.json --trainer <id> --dry-run` (expect 14 zones, 41 machines)
 
 ## Claude Code tooling in this repo

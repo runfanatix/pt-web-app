@@ -1,0 +1,92 @@
+/* Design tokens ported verbatim from prototype/zone-planner-v11.html (light, dark, and manual data-theme override). */
+:root {
+  --bg: #e9edf1;
+  --paper: #f8fafb;
+  --surface: #ffffff;
+  --ink: #16212b;
+  --muted: #566574;
+  --line: #c6cfd8;
+  --grid: #e4e9ee;
+  --accent: #c8202f;
+  --accent-ink: #ffffff;
+  --focus: #1f5fbf;
+  --flash: #fbe3e6;
+  --run-ready: #1f6feb;
+  --run-done: #6f7b87;
+  --run-now: #f08a00;
+  --run-next: #d7263d;
+  --run-ink: #ffffff;
+  --run-now-ink: #1b1200;
+  --z-cardio: #dce7f8;
+  --z-strength: #ece2c6;
+  --z-functional: #d4ebda;
+  --z-studio: #e6daf2;
+  --z-water: #cdebf0;
+  --z-amenity: #e4e7eb;
+  --z-outdoor: #eef0f2;
+  --wall: #2b3743;
+  --glass: #2e86c1;
+  --f-display: 'IBM Plex Sans Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  --f-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0c1218;
+    --paper: #111a22;
+    --surface: #172029;
+    --ink: #e6edf3;
+    --muted: #9aa9b7;
+    --line: #2b3946;
+    --grid: #1a2630;
+    --accent: #ff5a66;
+    --accent-ink: #1a0a0c;
+    --focus: #7fb0ff;
+    --flash: #3a1b20;
+    --z-cardio: #1f2e4a;
+    --z-strength: #3a3522;
+    --z-functional: #1e3a2b;
+    --z-studio: #34284a;
+    --z-water: #17394a;
+    --z-amenity: #222b34;
+    --z-outdoor: #1a2229;
+    --wall: #c9d4de;
+    --glass: #6fb7e6;
+    --run-ready: #5aa2ff;
+    --run-done: #8795a3;
+    --run-now: #ffa733;
+    --run-next: #ff5a66;
+    --run-ink: #0c1218;
+    --run-now-ink: #1b1200;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0c1218;
+  --paper: #111a22;
+  --surface: #172029;
+  --ink: #e6edf3;
+  --muted: #9aa9b7;
+  --line: #2b3946;
+  --grid: #1a2630;
+  --accent: #ff5a66;
+  --accent-ink: #1a0a0c;
+  --focus: #7fb0ff;
+  --flash: #3a1b20;
+  --z-cardio: #1f2e4a;
+  --z-strength: #3a3522;
+  --z-functional: #1e3a2b;
+  --z-studio: #34284a;
+  --z-water: #17394a;
+  --z-amenity: #222b34;
+  --z-outdoor: #1a2229;
+  --wall: #c9d4de;
+  --glass: #6fb7e6;
+  --run-ready: #5aa2ff;
+  --run-done: #8795a3;
+  --run-now: #ffa733;
+  --run-next: #ff5a66;
+  --run-ink: #0c1218;
+  --run-now-ink: #1b1200;
+  color-scheme: dark;
+}
