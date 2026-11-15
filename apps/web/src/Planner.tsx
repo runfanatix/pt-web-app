@@ -8,11 +8,16 @@ import {
   itemsPerFloor,
   remapItems,
   runLogText,
+  emptyProfile,
+  type ClientRecord,
   type GymSummary,
   type HistoryEntry,
+  type ItemSnap,
   type Layout,
   type LibraryExercise,
+  type ProgrammeRecord,
   type RunState,
+  type TrainerProfile,
 } from '@pt/core';
 import { TABS, type Mode, type TabId } from './tabs.ts';
 import { GymBar } from './components/GymBar.tsx';
@@ -23,8 +28,11 @@ import { RunHud } from './components/RunHud.tsx';
 import { RunTab } from './components/RunTab.tsx';
 import { SessionTab } from './components/SessionTab.tsx';
 import { TemplatesPanel } from './components/TemplatesPanel.tsx';
+import { AssignPanel } from './components/clients/AssignPanel.tsx';
+import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
+import type { ClientsApi, ProfileApi } from './data/clients.ts';
 import type { HistoryApi } from './data/history.ts';
 import type { Template, TemplateApi } from './data/templates.ts';
 import { copyText } from './lib/clipboard.ts';
@@ -40,6 +48,9 @@ interface Props {
   templates: TemplateApi | null;
   /** Null until the trainer profile has loaded; finished runs cannot be saved until then. */
   history: HistoryApi | null;
+  /** Null until the trainer profile has loaded. */
+  clientsApi?: ClientsApi | null;
+  profileApi?: ProfileApi | null;
   onSignOut: () => void;
 }
 
@@ -49,7 +60,15 @@ interface ToastState {
   view: boolean;
 }
 
-export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props) {
+export function Planner({
+  gyms,
+  loadGym,
+  templates,
+  history,
+  clientsApi = null,
+  profileApi = null,
+  onSignOut,
+}: Props) {
   const [mode, setMode] = useState<Mode>('plan');
   // A workout in progress that was saved before a reload reopens its own gym and the Run tab.
   const [saved] = useState(() => loadRunInProgress());
@@ -63,6 +82,9 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
   const [toast, setToast] = useState<ToastState | null>(null);
   const [runMsg, setRunMsg] = useState('');
   const [announce, setAnnounce] = useState('');
+  const [clients, setClients] = useState<ClientRecord[] | null>(null);
+  const [clientsError, setClientsError] = useState('');
+  const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [past, setPast] = useState<HistoryEntry[] | null>(null);
   const [pastError, setPastError] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -118,6 +140,32 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
     void refreshPast();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
+
+  // Saved clients and the trainer's business details (for the privacy notice).
+  const refreshClients = async () => {
+    if (!clientsApi) return;
+    try {
+      setClients(await clientsApi.list());
+      setClientsError('');
+    } catch (err) {
+      setClientsError(`Could not load clients: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  useEffect(() => {
+    void refreshClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientsApi]);
+  useEffect(() => {
+    if (!profileApi) return;
+    let live = true;
+    profileApi.get().then(
+      (pr) => live && setProfile(pr),
+      () => live && setProfile(emptyProfile()),
+    );
+    return () => {
+      live = false;
+    };
+  }, [profileApi]);
 
   // Keep the sticky planner panel clear of the run bar.
   useEffect(() => {
@@ -195,13 +243,24 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
     if (e) setFloorId(e.floor);
   }
 
-  async function applyTemplate(t: Template, how: 'replace' | 'append', stay = false) {
+  /** Puts stored exercises into the session, remapped onto the open gym, and tells the trainer what moved. */
+  async function applySnaps(
+    snaps: ItemSnap[],
+    opts: {
+      label: string;
+      how: 'replace' | 'append';
+      stay?: boolean;
+      title?: string;
+      notes?: string;
+      client?: { id: string; name: string };
+    },
+  ) {
     if (!layout) return;
     if (runLive) return say('Finish or reset the live run first.');
     const candidates = layout.equipment.map((e) => ({ id: e.id, name: e.name, type: e.type }));
     const present = new Set(candidates.map((c) => c.id));
     const links = Object.fromEntries(library.map((x) => [x.id, x.equipmentIds]));
-    const missing = [...new Set(t.items.map((i) => i.eid).filter((id) => id && !present.has(id)))];
+    const missing = [...new Set(snaps.map((i) => i.eid).filter((id) => id && !present.has(id)))];
     let oldInfo = new Map<string, { name: string; type: string }>();
     if (missing.length && templates) {
       try {
@@ -210,22 +269,31 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
         /* without the old machine names the remap falls back to exercise links */
       }
     }
-    const r = remapItems(t.items, candidates, links, oldInfo);
+    const r = remapItems(snaps, candidates, links, oldInfo);
     dispatch(
-      how === 'replace'
-        ? { type: 'load', items: r.items, title: t.name, notes: t.notes }
+      opts.how === 'replace'
+        ? { type: 'load', items: r.items, title: opts.title, notes: opts.notes }
         : { type: 'append', items: r.items },
     );
+    if (opts.client)
+      dispatch({ type: 'meta', patch: { clientId: opts.client.id, client: opts.client.name } });
     setSelEq(null);
     focusFirstFloor(r.items[0]?.eid);
-    if (!stay) setTab('session');
+    if (!opts.stay) setTab('session');
     const bits = [
-      `${how === 'replace' ? 'Loaded' : 'Added'} "${t.name}" (${r.items.length} exercise${r.items.length === 1 ? '' : 's'})`,
+      `${opts.how === 'replace' ? 'Loaded' : 'Added'} "${opts.label}" (${r.items.length} exercise${r.items.length === 1 ? '' : 's'})`,
     ];
     if (r.moved) bits.push(`${r.moved} moved to matching equipment`);
     if (r.skipped) bits.push(`${r.skipped} skipped: no matching equipment here`);
     say(bits.join('. ') + '.');
   }
+
+  const applyTemplate = (t: Template, how: 'replace' | 'append', stay = false) =>
+    applySnaps(t.items, { label: t.name, how, stay, title: t.name, notes: t.notes });
+
+  /** Opens a client's programme in the session, for that client. */
+  const openProgramme = (p: ProgrammeRecord, client: { id: string; name: string }) =>
+    applySnaps(p.items, { label: p.title, how: 'replace', title: p.title, notes: p.notes, client });
 
   /* ---------------------------------------------------------------- live run */
 
@@ -256,6 +324,15 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
       await history.save(entry);
       say(`Workout finished: ${fmtClock(r.total)}. Saved to history.`);
       await refreshPast();
+      // A client's record is kept for five years after their last workout.
+      if (entry.clientId && clientsApi) {
+        try {
+          await clientsApi.extendRetention(entry.clientId, entry.date);
+          await refreshClients();
+        } catch {
+          /* the workout is saved; the keep-until date is refreshed on the next one */
+        }
+      }
     } catch (err) {
       say(`Workout finished, but it could not be saved: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -458,7 +535,20 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
                 layout={layout}
                 library={library}
                 dispatch={dispatch}
+                clients={clients ?? []}
               >
+                {clientsApi && clients ? (
+                  <AssignPanel
+                    clients={clients}
+                    items={session.items}
+                    title={session.meta.title}
+                    notes={session.meta.notes}
+                    gymId={gym.id}
+                    api={clientsApi}
+                    selectedId={session.meta.clientId}
+                    onAssigned={refreshClients}
+                  />
+                ) : null}
                 {templates ? (
                   <TemplatesPanel
                     api={templates}
@@ -492,10 +582,23 @@ export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props)
                 place={placeOf}
               />
             )}
+            {tab === 'clients' && (
+              <ClientsTab
+                clients={clients}
+                error={clientsError}
+                api={clientsApi}
+                profile={profile}
+                profileApi={profileApi}
+                onProfileSaved={setProfile}
+                onChanged={refreshClients}
+                onOpenProgramme={(prog, client) => void openProgramme(prog, client)}
+                say={say}
+              />
+            )}
             {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
               <p className="hint">Waiting for the floor plan…</p>
             )}
-            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && (
+            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && tab !== 'clients' && (
               <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
             )}
           </div>

@@ -85,8 +85,17 @@ describe('client privacy', () => {
 
   it('the public view carries no private notes or contact details', () => {
     const view = publicClientView(client);
-    expect(view).toEqual({ name: 'Carla', goals: 'Run 10k' });
-    expect(JSON.stringify(view)).not.toMatch(/knee|082|carla@/);
+    expect(view).toEqual({ name: 'Carla' });
+    expect(JSON.stringify(view)).not.toMatch(/knee|082|carla@|Run 10k/);
+  });
+
+  it('accepts a YYYY-MM-DD date of birth, a missing one, and nothing else', () => {
+    const dob = (v: unknown) => ClientSchema.safeParse({ id: 'c', name: 'A', dateOfBirth: v }).success;
+    expect(dob('2012-05-01')).toBe(true);
+    expect(dob(null)).toBe(true);
+    expect(dob('01/05/2012')).toBe(false);
+    expect(dob('2012-5-1')).toBe(false);
+    expect(dob('')).toBe(false);
   });
 
   it('validates email format but allows an empty email', () => {

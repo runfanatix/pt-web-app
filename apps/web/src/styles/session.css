@@ -462,3 +462,107 @@ textarea {
   bottom: auto;
   top: calc(env(safe-area-inset-top, 0px) + 12px);
 }
+
+/* callouts, tick boxes, privacy notice (ported from the prototype where it had them) */
+.callout {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 4px solid var(--run-ready);
+  background: var(--paper);
+  border-radius: 0 4px 4px 0;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.callout.warn {
+  border-left-color: var(--run-now);
+}
+ul.callout {
+  padding-left: 28px;
+}
+.chk {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.chk input[type='checkbox'] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+.fs {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fs legend {
+  padding: 0 6px;
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rows .pick {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  text-align: left;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rows .pick .txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.egrp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notice-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.5;
+}
+.notice-view p,
+.notice-view ul {
+  margin: 0;
+}
+.notice-view ul {
+  padding-left: 20px;
+}
+.noticebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.notice-table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.notice-table th,
+.notice-table td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}

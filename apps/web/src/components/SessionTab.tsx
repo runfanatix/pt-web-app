@@ -2,7 +2,10 @@ import { useId, type KeyboardEvent } from 'react';
 import {
   estimateSeconds,
   exercisesFor,
+  isMinor,
+  onboardingStatus,
   routePlaces,
+  type ClientRecord,
   type Layout,
   type LibraryExercise,
   type SessionItem,
@@ -20,11 +23,13 @@ interface Props {
   layout: Layout;
   library: LibraryExercise[];
   dispatch: (a: Action) => void;
+  /** Saved clients to choose from (none: only a guest name is offered). */
+  clients?: ClientRecord[];
   /** Rendered below the summary: save and load templates. */
   children?: React.ReactNode;
 }
 
-export function SessionTab({ meta, items, layout, library, dispatch, children }: Props) {
+export function SessionTab({ meta, items, layout, library, dispatch, clients = [], children }: Props) {
   const uid = useId();
   const equipById = new Map(layout.equipment.map((e) => [e.id, e]));
   const floorName = new Map(layout.floors.map((f) => [f.id, f.name]));
@@ -34,21 +39,53 @@ export function SessionTab({ meta, items, layout, library, dispatch, children }:
   const route = routePlaces(items, equipById, place);
   const libById = new Map(library.map((x) => [x.id, x]));
   const setMeta = (patch: Partial<SessionMeta>) => dispatch({ type: 'meta', patch });
+  const pickedClient = clients.find((r) => r.client.id === meta.clientId);
 
   return (
     <div className="stack">
       <h2>Session</h2>
 
       <div className="meta">
-        <label className="full">
-          Guest name shown on the PDF (optional)
-          <input
-            type="text"
-            value={meta.client}
-            placeholder="e.g. Sam"
-            onChange={(e) => setMeta({ client: e.target.value })}
-          />
-        </label>
+        {clients.length > 0 && (
+          <label className="full">
+            Client
+            <select
+              value={meta.clientId}
+              onChange={(e) => {
+                const picked = clients.find((r) => r.client.id === e.target.value);
+                setMeta({
+                  clientId: picked ? picked.client.id : '',
+                  client: picked ? picked.client.name : '',
+                });
+              }}
+            >
+              <option value="">No saved client (guest)</option>
+              {clients.map((r) => (
+                <option key={r.client.id} value={r.client.id}>
+                  {r.client.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {pickedClient &&
+          !onboardingStatus(pickedClient.consents, isMinor(pickedClient.client.dateOfBirth)).complete && (
+            <p className="callout warn full" role="note">
+              {pickedClient.client.name}&apos;s consent is not complete. Record it in the Clients tab before
+              training them.
+            </p>
+          )}
+        {!meta.clientId && (
+          <label className="full">
+            Guest name shown on the PDF (optional)
+            <input
+              type="text"
+              value={meta.client}
+              placeholder="e.g. Sam"
+              onChange={(e) => setMeta({ client: e.target.value })}
+            />
+          </label>
+        )}
         <label className="full">
           Session name
           <input

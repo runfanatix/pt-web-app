@@ -240,7 +240,7 @@ describe('trainer-private data', () => {
 });
 
 describe('consent records (POPIA)', () => {
-  it('trainer can record and withdraw consent but not delete the record', async () => {
+  it('trainer can record consent and withdraw it with a NEW row, but never change or delete a record', async () => {
     let id = '';
     await asUser(db, alice.userId, async (q) => {
       id = (
@@ -253,11 +253,24 @@ describe('consent records (POPIA)', () => {
         "insert into consents (trainer_id, client_id, subject, purpose, notice_version) values ($1,$2,'client','training-data','v0-draft')",
         [alice.trainerId, ids.client],
       );
-      await q('update consents set withdrawn_at = now() where id = $1', [id]);
+      // withdrawal = a new row with granted = false
+      await q(
+        "insert into consents (trainer_id, client_id, subject, purpose, notice_version, granted) values ($1,$2,'client','training-data','v0-draft',false)",
+        [alice.trainerId, ids.client],
+      );
     });
+    expect(
+      await failsAs(db, alice.userId, 'update consents set granted = false where id = $1', [id]),
+    ).toMatch(/permission denied/);
     expect(await failsAs(db, alice.userId, 'delete from consents where id = $1', [id])).toMatch(
       /permission denied/,
     );
+    const history = await asUser(db, alice.userId, (q) =>
+      q<{ granted: boolean }>(
+        "select granted from consents where purpose = 'training-data' order by granted_at, granted desc",
+      ),
+    );
+    expect(history).toHaveLength(2);
     const bobSees = await asUser(db, bob.userId, (q) => q('select * from consents'));
     expect(bobSees).toHaveLength(0);
   });

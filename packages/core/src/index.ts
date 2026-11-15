@@ -8,3 +8,5 @@ export * from './session.ts';
 export * from './run.ts';
 export * from './history.ts';
 export * from './run-store.ts';
+export * from './privacy.ts';
+export * from './clients.ts';

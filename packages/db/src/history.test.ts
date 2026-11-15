@@ -10,6 +10,7 @@ const ids = {} as Record<string, string>;
 
 const entry = (): HistoryEntry => ({
   id: crypto.randomUUID(),
+  clientId: null,
   clientName: 'Sam',
   coach: 'Dee',
   title: 'Leg day',

@@ -24,8 +24,10 @@ export interface SessionItem {
 
 export interface SessionMeta {
   title: string;
-  /** Free-typed guest name, shown on the PDF. A saved client replaces it in Phase 5. */
+  /** The client's name as shown on the PDF and the log: a saved client's name, or a free-typed guest name. */
   client: string;
+  /** Id of the saved client this routine is for, or '' for a guest. */
+  clientId: string;
   coach: string;
   /** YYYY-MM-DD. */
   date: string;

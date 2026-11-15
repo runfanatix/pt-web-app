@@ -61,3 +61,41 @@ region is planned.
 3. Written operator agreements with Supabase and Vercel, and where data is stored. Supabase has no South African region, so name the EU region and the section 72 basis (see "Hosting outside South Africa").
 4. Security safeguards and a breach procedure (notify the Information Regulator and affected people).
 5. Do not store real client data in the free-tier project until the backup and hosting terms are acceptable.
+
+## Phase 5: the consent foundation (built from the owner's draft)
+
+The owner's draft wording (notice, consent screens, marketing opt-in) is in `packages/core/src/privacy.ts`. It is marked
+as a **draft** (`NOTICE_IS_DRAFT`, version `1.0-draft`) until an attorney has reviewed it; flip the flag and bump the version
+then. Items in [square brackets] that the app cannot know (platform company, effective date) stay visible as placeholders.
+
+Status against the draft's Part D:
+
+| Requirement | Status |
+| --- | --- |
+| Record every consent, never overwrite | Done. `consents` is append-only (a trainer cannot update or delete a row); a withdrawal is a new row with `granted = false`. Each row keeps the version and the exact wording shown; the privacy-notice row keeps the full notice text. |
+| Version the texts | Done per record (`notice_version`, `wording`). A separate table of all versions is not needed while every record carries its own text. |
+| Ask before health data | Done. Goals and private notes are blocked until health consent is recorded, and locked (kept, hidden) after it is withdrawn. |
+| Privacy and consent page | Done for the trainer, per client (current consents, one-tap-confirm withdrawal, marketing opt-in, per-person sharing consent). A page the client logs into themselves arrives with the client portal (Phase 9). |
+| Access, correction, deletion | Done: readable copy (text) of everything held, edit and delete by the trainer, every copy, withdrawal and deletion logged in `data_requests`. Edits are not yet logged as "correction" requests. |
+| Retention | Done: `retention_until` (five years after the last workout) is stored, extended when a workout is saved, and flagged on the client list and profile. Nothing is deleted automatically. |
+| Collect less | Done: no ID numbers or bank details; photos are not offered. |
+| Lock down access | Row-level security on every table and no service key in the browser: done. **Not done:** an audit log of who opened health records, and two-step sign-in for trainers (Supabase offers MFA). |
+| Breach plan, operator agreements, hosting agreement | Not software: the owner and the attorney. |
+| Hosting abroad | Done: the notice and a required consent screen name London. |
+
+Also decided in Phase 5: the **public client view carries no goals** (they can contain health information), only the name.
+The sign-up screen still uses the earlier short consent for trainers; the draft's note that trainers need their own, shorter
+notice (where the platform is the responsible party for their sign-up and billing details) is still to be written.
+
+### Attorney checklist (Part E of the owner's draft)
+
+- [ ] Roles: each trainer is the responsible party and the platform the operator; get an operator agreement template.
+- [ ] A short second notice for trainers' sign-up and billing details.
+- [ ] Information Officer for each trainer, and registration with the Information Regulator.
+- [ ] Health information ground: is the client's consent (section 27) the right basis, and do the 2026 health regulations apply to trainers?
+- [ ] London hosting: what section 72 needs for health information; whether the client tick-box adds anything; whether prior authorisation is ever needed.
+- [ ] Retention: the five years is a placeholder.
+- [ ] Mandatory ticks (privacy, health, hosting) with optional sharing, photos and marketing.
+- [ ] Under-18 guardian wording.
+- [ ] Marketing consent against the Regulator's prescribed form.
+- [ ] PAIA manual, terms of use, cookie wording.

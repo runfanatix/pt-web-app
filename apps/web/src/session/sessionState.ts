@@ -21,7 +21,10 @@ export function todayIso(now: Date = new Date()): string {
 }
 
 export function emptySession(now: Date = new Date()): SessionState {
-  return { meta: { title: '', client: '', coach: '', date: todayIso(now), notes: '' }, items: [] };
+  return {
+    meta: { title: '', client: '', clientId: '', coach: '', date: todayIso(now), notes: '' },
+    items: [],
+  };
 }
 
 let counter = 0;
@@ -90,6 +93,7 @@ const StoredSchema = z.object({
   meta: z.object({
     title: z.string(),
     client: z.string(),
+    clientId: z.string().default(''),
     coach: z.string(),
     date: z.string(),
     notes: z.string(),

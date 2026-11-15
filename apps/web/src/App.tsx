@@ -5,6 +5,7 @@ import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
 import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
+import { createClientsApi, createProfileApi, type ClientsApi, type ProfileApi } from './data/clients.ts';
 import { createHistoryApi, type HistoryApi } from './data/history.ts';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
@@ -38,6 +39,8 @@ function SignedIn() {
   const loadGym = useMemo(() => createGymDataLoader(client), [client]);
   const [templates, setTemplates] = useState<TemplateApi | null>(null);
   const [history, setHistory] = useState<HistoryApi | null>(null);
+  const [clientsApi, setClientsApi] = useState<ClientsApi | null>(null);
+  const [profileApi, setProfileApi] = useState<ProfileApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -45,11 +48,15 @@ function SignedIn() {
         if (!active) return;
         setTemplates(createTemplateApi(client, id));
         setHistory(createHistoryApi(client, id));
+        setClientsApi(createClientsApi(client, id));
+        setProfileApi(createProfileApi(client, id));
       },
       () => {
         if (!active) return;
         setTemplates(null);
         setHistory(null);
+        setClientsApi(null);
+        setProfileApi(null);
       },
     );
     return () => {
@@ -64,6 +71,8 @@ function SignedIn() {
       loadGym={loadGym}
       templates={templates}
       history={history}
+      clientsApi={clientsApi}
+      profileApi={profileApi}
       onSignOut={() => void signOut()}
     />
   );

@@ -28,6 +28,8 @@ export interface HistoryStep {
 
 export interface HistoryEntry {
   id: string;
+  /** The saved client this run was for, or null for a guest. */
+  clientId: string | null;
   clientName: string;
   coach: string;
   title: string;
@@ -93,6 +95,7 @@ export function buildHistoryEntry(input: {
   const startedAt = run.startedAt || Date.now();
   return {
     id: input.id,
+    clientId: meta.clientId || null,
     clientName: meta.client,
     coach: meta.coach,
     title: meta.title || 'Workout',
@@ -124,7 +127,7 @@ export function runLogText(r: HistoryEntry): string {
 /* ---------------------------------------------------------------- database rows */
 
 export const RUNS_SELECT =
-  'id, gym_id, client_name, gym_name, coach, title, run_date, started_at, total_ms, planned_min,' +
+  'id, gym_id, client_id, client_name, gym_name, coach, title, run_date, started_at, total_ms, planned_min,' +
   ' run_steps(n, equipment_id, machine, zone, exercise_name, sets, reps, rest, ms, done, step_order)';
 
 const StepRow = z.object({
@@ -143,6 +146,7 @@ const StepRow = z.object({
 const RunRow = z.object({
   id: z.string(),
   gym_id: z.string().nullable(),
+  client_id: z.string().nullable(),
   client_name: z.string(),
   gym_name: z.string(),
   coach: z.string(),
@@ -178,6 +182,7 @@ export function historyFromRows(input: unknown): HistoryEntry[] {
       const startedAt = r.started_at ? Date.parse(r.started_at) : 0;
       return {
         id: r.id,
+        clientId: r.client_id,
         clientName: r.client_name,
         coach: r.coach,
         title: r.title,
@@ -200,6 +205,7 @@ export function rowsFromEntry(trainerId: string, e: HistoryEntry) {
     id: e.id,
     trainer_id: trainerId,
     gym_id: e.gymId,
+    client_id: e.clientId,
     client_name: e.clientName,
     gym_name: e.gymName,
     coach: e.coach,

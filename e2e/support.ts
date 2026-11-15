@@ -85,17 +85,40 @@ export interface StoredTemplate {
   template_items: Record<string, unknown>[];
 }
 
+export interface StoredClient extends Record<string, unknown> {
+  id: string;
+  consents: Record<string, unknown>[];
+  programmes: { id: string; programme_items: Record<string, unknown>[] }[] & Record<string, unknown>[];
+}
+
 export interface StoredRun extends Record<string, unknown> {
   id: string;
   run_steps: Record<string, unknown>[];
 }
 
 /** Signs in and serves the Bedfordview data. Templates and runs live in memory for the page's lifetime. */
-export async function signInWithBedfordview(
-  page: Page,
-): Promise<{ templates: StoredTemplate[]; runs: StoredRun[] }> {
+export async function signInWithBedfordview(page: Page): Promise<{
+  templates: StoredTemplate[];
+  runs: StoredRun[];
+  clients: StoredClient[];
+  profile: Record<string, unknown>;
+  dataRequests: Record<string, unknown>[];
+}> {
   const templates: StoredTemplate[] = [];
   const runs: StoredRun[] = [];
+  const clients: StoredClient[] = [];
+  const dataRequests: Record<string, unknown>[] = [];
+  const profile: Record<string, unknown> = {
+    business_name: '',
+    address: '',
+    contact_email: '',
+    contact_phone: '',
+    information_officer_name: '',
+    information_officer_email: '',
+    payment_provider: '',
+    messaging_provider: '',
+    studio_name: '',
+  };
   // supabase-js stores the session under sb-<first label of the host>-auth-token.
   await page.addInitScript(
     (s) => localStorage.setItem('sb-127-auth-token', JSON.stringify(s)),
@@ -113,7 +136,98 @@ export async function signInWithBedfordview(
       return json(route, [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }]);
     if (path.endsWith('/rest/v1/floors')) return json(route, floorRowsFromPlan(plan));
     if (path.endsWith('/rest/v1/exercises')) return json(route, exerciseRowsFromPlan(plan));
-    if (path.endsWith('/rest/v1/trainers')) return json(route, { id: 'trainer-1' });
+    if (path.endsWith('/rest/v1/trainers')) {
+      if (method === 'PATCH') {
+        Object.assign(profile, req.postDataJSON() as Record<string, unknown>);
+        return empty(route);
+      }
+      const wantsProfile = (url.searchParams.get('select') ?? '').includes('business_name');
+      return json(route, wantsProfile ? profile : { id: 'trainer-1' });
+    }
+
+    if (path.endsWith('/rest/v1/clients')) {
+      const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        const row = {
+          ...body,
+          id: `c${clients.length + 1}`,
+          created_at: new Date().toISOString(),
+          consents: [],
+          programmes: [],
+        } as StoredClient;
+        clients.push(row);
+        return json(route, { id: row.id });
+      }
+      if (method === 'PATCH') {
+        const c = clients.find((x) => x.id === id);
+        if (c) Object.assign(c, req.postDataJSON() as Record<string, unknown>);
+        return empty(route);
+      }
+      if (method === 'DELETE') {
+        const i = clients.findIndex((x) => x.id === id);
+        if (i >= 0) clients.splice(i, 1);
+        return empty(route);
+      }
+      return json(route, clients);
+    }
+
+    if (path.endsWith('/rest/v1/consents')) {
+      if (method === 'POST') {
+        const rows = req.postDataJSON() as Record<string, unknown>[];
+        for (const r of rows) {
+          clients
+            .find((c) => c.id === r.client_id)
+            ?.consents.push({ ...r, granted_at: new Date().toISOString() });
+        }
+        return empty(route, 201);
+      }
+      return json(
+        route,
+        clients.flatMap((c) => c.consents),
+      );
+    }
+
+    if (path.endsWith('/rest/v1/data_requests')) {
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        dataRequests.push({
+          id: `d${dataRequests.length + 1}`,
+          received_at: new Date().toISOString(),
+          completed_at: null,
+          outcome: '',
+          ...body,
+        });
+        return empty(route, 201);
+      }
+      return json(route, dataRequests);
+    }
+
+    if (path.endsWith('/rest/v1/programmes')) {
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        const p = {
+          id: `p${Math.random()}`,
+          assigned_at: new Date().toISOString(),
+          programme_items: [] as Record<string, unknown>[],
+          ...body,
+        };
+        clients.find((c) => c.id === body.client_id)?.programmes.push(p);
+        return json(route, { id: p.id });
+      }
+      if (method === 'DELETE') {
+        const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
+        for (const c of clients) c.programmes = c.programmes.filter((p) => p.id !== id);
+        return empty(route);
+      }
+    }
+
+    if (path.endsWith('/rest/v1/programme_items') && method === 'POST') {
+      const rows = req.postDataJSON() as Record<string, unknown>[];
+      for (const c of clients)
+        c.programmes.find((p) => p.id === rows[0]?.programme_id)?.programme_items.push(...rows);
+      return empty(route, 201);
+    }
 
     if (path.endsWith('/rest/v1/templates')) {
       if (method === 'POST') {
@@ -186,5 +300,5 @@ export async function signInWithBedfordview(
     }
     return json(route, {});
   });
-  return { templates, runs };
+  return { templates, runs, clients, profile, dataRequests };
 }

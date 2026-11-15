@@ -40,7 +40,7 @@ const equipment = new Map([
   ['m1', equip('m1', 'Treadmill')],
   ['m2', equip('m2', 'Leg press')],
 ]);
-const meta = { title: 'Leg day', client: 'Sam', coach: 'Dee', date: '2026-11-15', notes: '' };
+const meta = { title: 'Leg day', client: 'Sam', clientId: '', coach: 'Dee', date: '2026-11-15', notes: '' };
 const gym = { id: 'g1', name: 'Virgin Active Bedfordview' };
 const place = (e: Equip) => `Zone of ${e.name}`;
 

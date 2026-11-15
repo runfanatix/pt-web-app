@@ -167,11 +167,23 @@ export const ClientSchema = z.object({
   renewal: z.string().nullable().default(null),
   goals: text(2000).default(''),
   privateNotes: text(4000).default(''),
+  /** YYYY-MM-DD. Decides whether a guardian's consent is needed (under 18). */
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .default(null),
+  guardianName: text(120).default(''),
+  /** The record is due for deletion or de-identification after this date. */
+  retentionUntil: z.string().nullable().default(null),
 });
 export type Client = z.infer<typeof ClientSchema>;
 
-/** Fields a client may ever see on a shared programme page. Anything else is dropped. */
-export const PublicClientViewSchema = ClientSchema.pick({ name: true, goals: true });
+/**
+ * Fields a client may ever see on a shared programme page. Anything else is dropped. Goals are left out on
+ * purpose: they can contain health information.
+ */
+export const PublicClientViewSchema = ClientSchema.pick({ name: true });
 export function publicClientView(client: Client): z.infer<typeof PublicClientViewSchema> {
   return PublicClientViewSchema.parse(client);
 }
