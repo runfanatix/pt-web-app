@@ -1,0 +1,3064 @@
+{
+  "venue": "Virgin Active Bedfordview",
+  "gym": {
+    "name": "Virgin Active",
+    "branch": "Bedfordview",
+    "address": "101 Van Buuren Rd",
+    "phone": "",
+    "notes": ""
+  },
+  "note": "Illustrative layout. Each floor has its own canvas size (floors[].w and h); zones, structs and equipment carry a floor id. Exercise links live in exercises[].equipmentIds.",
+  "floors": [
+    {
+      "id": "f1",
+      "name": "Ground floor",
+      "w": 1000,
+      "h": 620
+    },
+    {
+      "id": "f2",
+      "name": "First floor",
+      "w": 1000,
+      "h": 620
+    }
+  ],
+  "zones": [
+    {
+      "id": "cardio",
+      "name": "Cardio",
+      "cat": "cardio",
+      "x": 30,
+      "y": 30,
+      "w": 250,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "machines",
+      "name": "Selectorised Strength",
+      "cat": "strength",
+      "x": 290,
+      "y": 30,
+      "w": 250,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "lift",
+      "name": "Lift Club Floor",
+      "cat": "strength",
+      "x": 550,
+      "y": 30,
+      "w": 230,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "padel",
+      "name": "Padel Courts",
+      "cat": "outdoor",
+      "x": 790,
+      "y": 30,
+      "w": 180,
+      "h": 190,
+      "floor": "f1"
+    },
+    {
+      "id": "functional",
+      "name": "Functional Floor",
+      "cat": "functional",
+      "x": 30,
+      "y": 220,
+      "w": 250,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "free",
+      "name": "Free Weights",
+      "cat": "strength",
+      "x": 290,
+      "y": 220,
+      "w": 250,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "studio",
+      "name": "The Studio",
+      "cat": "studio",
+      "x": 550,
+      "y": 220,
+      "w": 230,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "seating",
+      "name": "Outdoor Seating",
+      "cat": "outdoor",
+      "x": 790,
+      "y": 230,
+      "w": 180,
+      "h": 100,
+      "floor": "f1"
+    },
+    {
+      "id": "cowork",
+      "name": "Co-working",
+      "cat": "amenity",
+      "x": 790,
+      "y": 340,
+      "w": 180,
+      "h": 110,
+      "floor": "f1"
+    },
+    {
+      "id": "kauai",
+      "name": "Kauai",
+      "cat": "amenity",
+      "x": 790,
+      "y": 460,
+      "w": 180,
+      "h": 130,
+      "floor": "f1"
+    },
+    {
+      "id": "reception",
+      "name": "Reception",
+      "cat": "amenity",
+      "x": 30,
+      "y": 410,
+      "w": 150,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "mindbody",
+      "name": "Mind & Body Studio",
+      "cat": "studio",
+      "x": 190,
+      "y": 410,
+      "w": 170,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "cycle",
+      "name": "Cycle Studio",
+      "cat": "studio",
+      "x": 370,
+      "y": 410,
+      "w": 170,
+      "h": 180,
+      "floor": "f1"
+    },
+    {
+      "id": "pool",
+      "name": "Leisure Pool",
+      "cat": "water",
+      "x": 550,
+      "y": 410,
+      "w": 230,
+      "h": 180,
+      "floor": "f1"
+    }
+  ],
+  "structs": [
+    {
+      "id": "s-door",
+      "type": "door",
+      "floor": "f1",
+      "x": 105,
+      "y": 590,
+      "w": 44,
+      "h": 0,
+      "x2": 0,
+      "y2": 0,
+      "rot": 0,
+      "label": "ENTRANCE",
+      "shared": false
+    },
+    {
+      "id": "s-lift1",
+      "type": "lift",
+      "floor": "f1",
+      "x": 132,
+      "y": 440,
+      "w": 36,
+      "h": 36,
+      "x2": 0,
+      "y2": 0,
+      "rot": 0,
+      "label": "LIFT",
+      "shared": true
+    },
+    {
+      "id": "s-stairs1",
+      "type": "stairs",
+      "floor": "f1",
+      "x": 44,
+      "y": 520,
+      "w": 70,
+      "h": 36,
+      "x2": 0,
+      "y2": 0,
+      "rot": 0,
+      "label": "STAIRS",
+      "shared": true
+    }
+  ],
+  "equipment": [
+    {
+      "id": "tread",
+      "name": "Treadmills",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 65,
+      "y": 85,
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "easy-jog",
+        "incline-walk",
+        "interval-run"
+      ]
+    },
+    {
+      "id": "xtrain",
+      "name": "Cross-trainers",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 155,
+      "y": 85,
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "reverse-stride",
+        "steady-state-cross-train"
+      ]
+    },
+    {
+      "id": "stair",
+      "name": "Stair climbers",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 245,
+      "y": 85,
+      "muscles": [
+        "cardio",
+        "glutes",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "steady-climb",
+        "step-intervals"
+      ]
+    },
+    {
+      "id": "bike",
+      "name": "Upright bikes",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 65,
+      "y": 155,
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "hill-intervals",
+        "warm-up-spin"
+      ]
+    },
+    {
+      "id": "rower",
+      "name": "Rowers",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 155,
+      "y": 155,
+      "muscles": [
+        "cardio",
+        "back",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "500-m-repeats",
+        "steady-row"
+      ]
+    },
+    {
+      "id": "airbike",
+      "name": "Air bikes",
+      "zone": "cardio",
+      "type": "cardio",
+      "x": 245,
+      "y": 155,
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "calorie-ladder",
+        "sprint-intervals"
+      ]
+    },
+    {
+      "id": "chestpress",
+      "name": "Chest press",
+      "zone": "machines",
+      "type": "machine",
+      "x": 330,
+      "y": 85,
+      "muscles": [
+        "chest",
+        "arms",
+        "shoulders"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "paused-chest-press",
+        "seated-chest-press"
+      ]
+    },
+    {
+      "id": "latpull",
+      "name": "Lat pulldown",
+      "zone": "machines",
+      "type": "machine",
+      "x": 415,
+      "y": 85,
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "neutral-grip-pulldown",
+        "wide-grip-pulldown"
+      ]
+    },
+    {
+      "id": "seatedrow",
+      "name": "Seated row",
+      "zone": "machines",
+      "type": "machine",
+      "x": 500,
+      "y": 85,
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "seated-row",
+        "single-arm-row"
+      ]
+    },
+    {
+      "id": "shpress",
+      "name": "Shoulder press",
+      "zone": "machines",
+      "type": "machine",
+      "x": 330,
+      "y": 155,
+      "muscles": [
+        "shoulders",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "machine-shoulder-press"
+      ]
+    },
+    {
+      "id": "legpress",
+      "name": "Leg press",
+      "zone": "machines",
+      "type": "machine",
+      "x": 415,
+      "y": 155,
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "leg-press",
+        "single-leg-press"
+      ]
+    },
+    {
+      "id": "legcurl",
+      "name": "Leg curl",
+      "zone": "machines",
+      "type": "machine",
+      "x": 500,
+      "y": 155,
+      "muscles": [
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "seated-leg-curl"
+      ]
+    },
+    {
+      "id": "racka",
+      "name": "Power rack A",
+      "zone": "lift",
+      "type": "free",
+      "x": 595,
+      "y": 85,
+      "muscles": [
+        "legs",
+        "glutes",
+        "back",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "back-squat",
+        "overhead-press",
+        "rack-pull",
+        "romanian-deadlift"
+      ]
+    },
+    {
+      "id": "rackb",
+      "name": "Power rack B",
+      "zone": "lift",
+      "type": "free",
+      "x": 665,
+      "y": 85,
+      "muscles": [
+        "legs",
+        "shoulders",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-row",
+        "front-squat",
+        "overhead-press",
+        "pull-ups"
+      ]
+    },
+    {
+      "id": "smith",
+      "name": "Smith machine",
+      "zone": "lift",
+      "type": "machine",
+      "x": 735,
+      "y": 85,
+      "muscles": [
+        "legs",
+        "chest",
+        "shoulders"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "smith-incline-press",
+        "smith-split-squat",
+        "smith-squat"
+      ]
+    },
+    {
+      "id": "dlplat",
+      "name": "Deadlift platform",
+      "zone": "lift",
+      "type": "free",
+      "x": 595,
+      "y": 155,
+      "muscles": [
+        "back",
+        "glutes",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-row",
+        "conventional-deadlift",
+        "romanian-deadlift",
+        "trap-bar-deadlift"
+      ]
+    },
+    {
+      "id": "benchpress",
+      "name": "Bench press",
+      "zone": "lift",
+      "type": "free",
+      "x": 665,
+      "y": 155,
+      "muscles": [
+        "chest",
+        "arms",
+        "shoulders"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-bench-press",
+        "close-grip-bench-press"
+      ]
+    },
+    {
+      "id": "hipthrust",
+      "name": "Hip thrust bench",
+      "zone": "lift",
+      "type": "free",
+      "x": 735,
+      "y": 155,
+      "muscles": [
+        "glutes",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-hip-thrust",
+        "glute-bridge"
+      ]
+    },
+    {
+      "id": "sled",
+      "name": "Sled lane",
+      "zone": "functional",
+      "type": "rig",
+      "x": 65,
+      "y": 275,
+      "muscles": [
+        "legs",
+        "glutes",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "sled-pull",
+        "sled-push"
+      ]
+    },
+    {
+      "id": "ropes",
+      "name": "Battle ropes",
+      "zone": "functional",
+      "type": "rig",
+      "x": 155,
+      "y": 275,
+      "muscles": [
+        "shoulders",
+        "core",
+        "cardio"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "alternating-waves",
+        "rope-slams"
+      ]
+    },
+    {
+      "id": "trx",
+      "name": "Suspension rig",
+      "zone": "functional",
+      "type": "rig",
+      "x": 245,
+      "y": 275,
+      "muscles": [
+        "back",
+        "core",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "push-up",
+        "suspension-push-up",
+        "suspension-row"
+      ]
+    },
+    {
+      "id": "plyo",
+      "name": "Plyo boxes",
+      "zone": "functional",
+      "type": "rig",
+      "x": 65,
+      "y": 345,
+      "muscles": [
+        "legs",
+        "glutes",
+        "cardio"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "box-jump",
+        "step-up"
+      ]
+    },
+    {
+      "id": "kb",
+      "name": "Kettlebell rack",
+      "zone": "functional",
+      "type": "free",
+      "x": 155,
+      "y": 345,
+      "muscles": [
+        "full body",
+        "glutes",
+        "core"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "farmer-carry",
+        "goblet-squat",
+        "kettlebell-swing",
+        "turkish-get-up"
+      ]
+    },
+    {
+      "id": "medball",
+      "name": "Med-ball wall",
+      "zone": "functional",
+      "type": "rig",
+      "x": 245,
+      "y": 345,
+      "muscles": [
+        "core",
+        "shoulders",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "rotational-throw",
+        "wall-ball"
+      ]
+    },
+    {
+      "id": "db",
+      "name": "Dumbbell rack",
+      "zone": "free",
+      "type": "free",
+      "x": 330,
+      "y": 275,
+      "muscles": [
+        "full body",
+        "arms",
+        "shoulders",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "bulgarian-split-squat",
+        "dumbbell-bench-press",
+        "dumbbell-curl",
+        "dumbbell-lateral-raise",
+        "dumbbell-lunge",
+        "dumbbell-romanian-deadlift",
+        "dumbbell-row",
+        "dumbbell-shoulder-press",
+        "farmer-carry",
+        "goblet-squat",
+        "incline-dumbbell-press",
+        "overhead-triceps-extension",
+        "single-arm-row"
+      ]
+    },
+    {
+      "id": "benches",
+      "name": "Adjustable benches",
+      "zone": "free",
+      "type": "free",
+      "x": 415,
+      "y": 275,
+      "muscles": [
+        "chest",
+        "shoulders",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "bench-supported-row",
+        "bulgarian-split-squat",
+        "dumbbell-bench-press",
+        "dumbbell-row",
+        "incline-dumbbell-press",
+        "skull-crusher",
+        "step-up"
+      ]
+    },
+    {
+      "id": "cable",
+      "name": "Cable trainer",
+      "zone": "free",
+      "type": "machine",
+      "x": 500,
+      "y": 275,
+      "muscles": [
+        "back",
+        "chest",
+        "core",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "cable-biceps-curl",
+        "cable-chop",
+        "cable-fly",
+        "cable-glute-kickback",
+        "cable-row",
+        "face-pull",
+        "overhead-triceps-extension",
+        "pallof-press",
+        "seated-row",
+        "triceps-pushdown"
+      ]
+    },
+    {
+      "id": "barbell",
+      "name": "Barbell rack",
+      "zone": "free",
+      "type": "free",
+      "x": 330,
+      "y": 345,
+      "muscles": [
+        "arms",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-curl",
+        "dumbbell-curl",
+        "landmine-press",
+        "skull-crusher"
+      ]
+    },
+    {
+      "id": "preacher",
+      "name": "Preacher bench",
+      "zone": "free",
+      "type": "free",
+      "x": 415,
+      "y": 345,
+      "muscles": [
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "preacher-curl"
+      ]
+    },
+    {
+      "id": "backext",
+      "name": "Back extension",
+      "zone": "free",
+      "type": "machine",
+      "x": 500,
+      "y": 345,
+      "muscles": [
+        "back",
+        "glutes",
+        "core"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "back-extension",
+        "reverse-hyper"
+      ]
+    },
+    {
+      "id": "mats",
+      "name": "Mats and steps",
+      "zone": "studio",
+      "type": "space",
+      "x": 595,
+      "y": 295,
+      "muscles": [
+        "core",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "bird-dog",
+        "bodyweight-squat",
+        "dead-bug",
+        "glute-bridge",
+        "lunges",
+        "plank-hold",
+        "push-up",
+        "side-plank",
+        "step-aerobics"
+      ]
+    },
+    {
+      "id": "classbar",
+      "name": "Class barbells",
+      "zone": "studio",
+      "type": "free",
+      "x": 665,
+      "y": 295,
+      "muscles": [
+        "full body",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "barbell-complex",
+        "bodyweight-squat",
+        "lunges"
+      ]
+    },
+    {
+      "id": "bands",
+      "name": "Bands and tubing",
+      "zone": "studio",
+      "type": "free",
+      "x": 735,
+      "y": 295,
+      "muscles": [
+        "shoulders",
+        "glutes",
+        "arms"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "band-pull-apart",
+        "banded-external-rotation",
+        "banded-lateral-walk"
+      ]
+    },
+    {
+      "id": "yoga",
+      "name": "Yoga mats and blocks",
+      "zone": "mindbody",
+      "type": "space",
+      "x": 235,
+      "y": 485,
+      "muscles": [
+        "mobility",
+        "core"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "cat-cow",
+        "child-pose",
+        "downward-dog",
+        "hamstring-stretch",
+        "hip-mobility-flow",
+        "thread-the-needle"
+      ]
+    },
+    {
+      "id": "rollers",
+      "name": "Foam rollers",
+      "zone": "mindbody",
+      "type": "space",
+      "x": 315,
+      "y": 485,
+      "muscles": [
+        "mobility"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "lat-and-glute-roll",
+        "quad-and-calf-roll",
+        "thoracic-roll"
+      ]
+    },
+    {
+      "id": "spin",
+      "name": "Spin bikes",
+      "zone": "cycle",
+      "type": "cardio",
+      "x": 415,
+      "y": 485,
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "hill-intervals",
+        "interval-ride",
+        "seated-climb",
+        "warm-up-spin"
+      ]
+    },
+    {
+      "id": "watt",
+      "name": "Wattbikes",
+      "zone": "cycle",
+      "type": "cardio",
+      "x": 495,
+      "y": 485,
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "interval-ride",
+        "power-test",
+        "seated-climb",
+        "sprint-repeats"
+      ]
+    },
+    {
+      "id": "leisure",
+      "name": "Leisure pool",
+      "zone": "pool",
+      "type": "space",
+      "x": 615,
+      "y": 490,
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "aqua-intervals",
+        "aqua-walking",
+        "water-jogging"
+      ]
+    },
+    {
+      "id": "aquaeq",
+      "name": "Aqua weights",
+      "zone": "pool",
+      "type": "space",
+      "x": 715,
+      "y": 490,
+      "muscles": [
+        "arms",
+        "shoulders",
+        "legs"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "aqua-dumbbell-press",
+        "water-jogging"
+      ]
+    },
+    {
+      "id": "padel1",
+      "name": "Padel court 1",
+      "zone": "padel",
+      "type": "space",
+      "x": 840,
+      "y": 110,
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "footwork-ladder",
+        "match-play",
+        "rally-drills",
+        "serve-practice"
+      ]
+    },
+    {
+      "id": "padel2",
+      "name": "Padel court 2",
+      "zone": "padel",
+      "type": "space",
+      "x": 925,
+      "y": 110,
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "notes": "",
+      "floor": "f1",
+      "exerciseIds": [
+        "footwork-ladder",
+        "match-play",
+        "rally-drills",
+        "serve-practice"
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "id": "incline-walk",
+      "name": "Incline walk",
+      "muscles": [
+        "cardio",
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "tread"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "8 min",
+      "rest": 0,
+      "cue": "Set a 4 to 8% incline, stand tall and keep a light touch on the rails.",
+      "link": ""
+    },
+    {
+      "id": "easy-jog",
+      "name": "Easy jog",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "tread"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "8 min",
+      "rest": 0,
+      "cue": "Conversational pace with relaxed shoulders and quick, light steps.",
+      "link": ""
+    },
+    {
+      "id": "interval-run",
+      "name": "Interval run",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "tread"
+      ],
+      "level": "I",
+      "sets": 8,
+      "reps": "30 s",
+      "rest": 60,
+      "cue": "Hard efforts, easy recoveries. Keep your hands off the rails.",
+      "link": ""
+    },
+    {
+      "id": "steady-state-cross-train",
+      "name": "Steady state cross-train",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "xtrain"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "8 min",
+      "rest": 0,
+      "cue": "Push and pull the handles and stay tall through the chest.",
+      "link": ""
+    },
+    {
+      "id": "reverse-stride",
+      "name": "Reverse stride",
+      "muscles": [
+        "cardio",
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "xtrain"
+      ],
+      "level": "I",
+      "sets": 1,
+      "reps": "6 min",
+      "rest": 0,
+      "cue": "Pedal backwards with a light grip and drive through the heels.",
+      "link": ""
+    },
+    {
+      "id": "step-intervals",
+      "name": "Step intervals",
+      "muscles": [
+        "cardio",
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "stair"
+      ],
+      "level": "I",
+      "sets": 6,
+      "reps": "45 s",
+      "rest": 45,
+      "cue": "Whole foot on each step and do not lean on the rails.",
+      "link": ""
+    },
+    {
+      "id": "steady-climb",
+      "name": "Steady climb",
+      "muscles": [
+        "cardio",
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "stair"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "10 min",
+      "rest": 0,
+      "cue": "Upright posture and a steady cadence.",
+      "link": ""
+    },
+    {
+      "id": "warm-up-spin",
+      "name": "Warm-up spin",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "bike",
+        "spin"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "5 min",
+      "rest": 0,
+      "cue": "Light resistance and a smooth 80 to 90 rpm cadence.",
+      "link": ""
+    },
+    {
+      "id": "hill-intervals",
+      "name": "Hill intervals",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "bike",
+        "spin"
+      ],
+      "level": "I",
+      "sets": 6,
+      "reps": "60 s",
+      "rest": 60,
+      "cue": "Add resistance for the climb and stay seated and smooth.",
+      "link": ""
+    },
+    {
+      "id": "500-m-repeats",
+      "name": "500 m repeats",
+      "muscles": [
+        "cardio",
+        "back",
+        "legs"
+      ],
+      "equipmentIds": [
+        "rower"
+      ],
+      "level": "I",
+      "sets": 5,
+      "reps": "500 m",
+      "rest": 90,
+      "cue": "Legs, then body, then arms. Reverse the order on the way back.",
+      "link": ""
+    },
+    {
+      "id": "steady-row",
+      "name": "Steady row",
+      "muscles": [
+        "cardio",
+        "back",
+        "legs"
+      ],
+      "equipmentIds": [
+        "rower"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "10 min",
+      "rest": 0,
+      "cue": "Keep a strong, tall chest and a smooth stroke.",
+      "link": ""
+    },
+    {
+      "id": "sprint-intervals",
+      "name": "Sprint intervals",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "airbike"
+      ],
+      "level": "A",
+      "sets": 8,
+      "reps": "20 s",
+      "rest": 40,
+      "cue": "Drive with arms and legs together and settle your breathing in the rests.",
+      "link": ""
+    },
+    {
+      "id": "calorie-ladder",
+      "name": "Calorie ladder",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "airbike"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "10 cal",
+      "rest": 60,
+      "cue": "Climb the calorie target each round and rest between rounds.",
+      "link": ""
+    },
+    {
+      "id": "interval-ride",
+      "name": "Interval ride",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "spin",
+        "watt"
+      ],
+      "level": "I",
+      "sets": 8,
+      "reps": "40 s",
+      "rest": 40,
+      "cue": "Hard efforts on the beat, then easy spinning to recover.",
+      "link": ""
+    },
+    {
+      "id": "seated-climb",
+      "name": "Seated climb",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "spin",
+        "watt"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "8 min",
+      "rest": 0,
+      "cue": "Heavy resistance, slow cadence, stay seated with relaxed hands.",
+      "link": ""
+    },
+    {
+      "id": "sprint-repeats",
+      "name": "Sprint repeats",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "watt"
+      ],
+      "level": "A",
+      "sets": 6,
+      "reps": "10 s",
+      "rest": 50,
+      "cue": "Short, maximal efforts with full recovery between.",
+      "link": ""
+    },
+    {
+      "id": "power-test",
+      "name": "Power test",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "watt"
+      ],
+      "level": "I",
+      "sets": 1,
+      "reps": "20 s",
+      "rest": 0,
+      "cue": "One maximal effort. Record the average watts to compare next time.",
+      "link": ""
+    },
+    {
+      "id": "seated-chest-press",
+      "name": "Seated chest press",
+      "muscles": [
+        "chest",
+        "arms",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "chestpress"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Handles at mid-chest height with shoulder blades pinned back.",
+      "link": ""
+    },
+    {
+      "id": "paused-chest-press",
+      "name": "Paused chest press",
+      "muscles": [
+        "chest",
+        "arms"
+      ],
+      "equipmentIds": [
+        "chestpress"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8",
+      "rest": 75,
+      "cue": "Hold for a second at the chest, then press without shrugging.",
+      "link": ""
+    },
+    {
+      "id": "wide-grip-pulldown",
+      "name": "Wide-grip pulldown",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "latpull"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Lead with the elbows, pull to the upper chest and keep the ribs down.",
+      "link": ""
+    },
+    {
+      "id": "neutral-grip-pulldown",
+      "name": "Neutral-grip pulldown",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "latpull"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Palms facing in, drive the elbows down towards your ribs.",
+      "link": ""
+    },
+    {
+      "id": "seated-row",
+      "name": "Seated row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "seatedrow",
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Squeeze the shoulder blades together and avoid rocking the torso.",
+      "link": ""
+    },
+    {
+      "id": "single-arm-row",
+      "name": "Single-arm row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "seatedrow",
+        "db"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 60,
+      "cue": "Brace the core and row to the hip.",
+      "link": ""
+    },
+    {
+      "id": "machine-shoulder-press",
+      "name": "Machine shoulder press",
+      "muscles": [
+        "shoulders",
+        "arms"
+      ],
+      "equipmentIds": [
+        "shpress"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Start with the handles at ear height and keep the ribs down.",
+      "link": ""
+    },
+    {
+      "id": "leg-press",
+      "name": "Leg press",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "legpress"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Feet shoulder-width, lower to about 90 degrees at the knee and do not lock out.",
+      "link": ""
+    },
+    {
+      "id": "single-leg-press",
+      "name": "Single-leg press",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "legpress"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 60,
+      "cue": "Keep the hips level and push through the whole foot.",
+      "link": ""
+    },
+    {
+      "id": "seated-leg-curl",
+      "name": "Seated leg curl",
+      "muscles": [
+        "legs"
+      ],
+      "equipmentIds": [
+        "legcurl"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Hips pressed into the seat and a slow, controlled return.",
+      "link": ""
+    },
+    {
+      "id": "back-squat",
+      "name": "Back squat",
+      "muscles": [
+        "legs",
+        "glutes",
+        "core"
+      ],
+      "equipmentIds": [
+        "racka"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Brace, break at the hips and knees together and keep the whole foot planted.",
+      "link": ""
+    },
+    {
+      "id": "overhead-press",
+      "name": "Overhead press",
+      "muscles": [
+        "shoulders",
+        "arms",
+        "core"
+      ],
+      "equipmentIds": [
+        "racka",
+        "rackb"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Squeeze the glutes and press in a straight line.",
+      "link": ""
+    },
+    {
+      "id": "rack-pull",
+      "name": "Rack pull",
+      "muscles": [
+        "back",
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "racka"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Bar at knee height, hinge and lock out by squeezing the glutes.",
+      "link": ""
+    },
+    {
+      "id": "front-squat",
+      "name": "Front squat",
+      "muscles": [
+        "legs",
+        "core",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "rackb"
+      ],
+      "level": "A",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Elbows high, upright torso and stay balanced over the midfoot.",
+      "link": ""
+    },
+    {
+      "id": "pull-ups",
+      "name": "Pull-ups",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "rackb"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Start from a full hang and pull the chest towards the bar.",
+      "link": ""
+    },
+    {
+      "id": "barbell-row",
+      "name": "Barbell row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "rackb",
+        "dlplat"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Hinge to a flat back, row to the lower ribs and control the lowering.",
+      "link": ""
+    },
+    {
+      "id": "smith-squat",
+      "name": "Smith squat",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "smith"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Feet slightly forward of the bar and keep the torso tall.",
+      "link": ""
+    },
+    {
+      "id": "smith-split-squat",
+      "name": "Smith split squat",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "smith"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 75,
+      "cue": "Long stride and drop the back knee straight down.",
+      "link": ""
+    },
+    {
+      "id": "smith-incline-press",
+      "name": "Smith incline press",
+      "muscles": [
+        "chest",
+        "shoulders",
+        "arms"
+      ],
+      "equipmentIds": [
+        "smith"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Lower to the upper chest and press without flaring the elbows.",
+      "link": ""
+    },
+    {
+      "id": "conventional-deadlift",
+      "name": "Conventional deadlift",
+      "muscles": [
+        "back",
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "dlplat"
+      ],
+      "level": "A",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Bar over midfoot, take the slack out of the bar and push the floor away.",
+      "link": ""
+    },
+    {
+      "id": "trap-bar-deadlift",
+      "name": "Trap-bar deadlift",
+      "muscles": [
+        "back",
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "dlplat"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Drive through the floor and stand tall at the top.",
+      "link": ""
+    },
+    {
+      "id": "romanian-deadlift",
+      "name": "Romanian deadlift",
+      "muscles": [
+        "glutes",
+        "legs",
+        "back"
+      ],
+      "equipmentIds": [
+        "dlplat",
+        "racka"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8",
+      "rest": 90,
+      "cue": "Soft knees, push the hips back and keep the bar close to the legs.",
+      "link": ""
+    },
+    {
+      "id": "barbell-bench-press",
+      "name": "Barbell bench press",
+      "muscles": [
+        "chest",
+        "arms",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "benchpress"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "6",
+      "rest": 90,
+      "cue": "Shoulder blades tucked, feet planted and the bar to the lower chest.",
+      "link": ""
+    },
+    {
+      "id": "close-grip-bench-press",
+      "name": "Close-grip bench press",
+      "muscles": [
+        "arms",
+        "chest"
+      ],
+      "equipmentIds": [
+        "benchpress"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Hands shoulder-width and elbows tucked close to the ribs.",
+      "link": ""
+    },
+    {
+      "id": "barbell-hip-thrust",
+      "name": "Barbell hip thrust",
+      "muscles": [
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "hipthrust"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 75,
+      "cue": "Chin tucked, ribs down and squeeze the glutes at the top.",
+      "link": ""
+    },
+    {
+      "id": "glute-bridge",
+      "name": "Glute bridge",
+      "muscles": [
+        "glutes",
+        "core"
+      ],
+      "equipmentIds": [
+        "hipthrust",
+        "mats"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Press through the heels and squeeze the glutes at the top.",
+      "link": ""
+    },
+    {
+      "id": "sled-push",
+      "name": "Sled push",
+      "muscles": [
+        "legs",
+        "glutes",
+        "full body"
+      ],
+      "equipmentIds": [
+        "sled"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "20 m",
+      "rest": 90,
+      "cue": "Low hips, long strides and a steady push.",
+      "link": ""
+    },
+    {
+      "id": "sled-pull",
+      "name": "Sled pull",
+      "muscles": [
+        "legs",
+        "back",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "sled"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "20 m",
+      "rest": 90,
+      "cue": "Lean back slightly and take small, quick steps.",
+      "link": ""
+    },
+    {
+      "id": "alternating-waves",
+      "name": "Alternating waves",
+      "muscles": [
+        "shoulders",
+        "core",
+        "cardio"
+      ],
+      "equipmentIds": [
+        "ropes"
+      ],
+      "level": "B",
+      "sets": 6,
+      "reps": "30 s",
+      "rest": 30,
+      "cue": "Slight squat, braced core and even waves.",
+      "link": ""
+    },
+    {
+      "id": "rope-slams",
+      "name": "Rope slams",
+      "muscles": [
+        "shoulders",
+        "core",
+        "cardio"
+      ],
+      "equipmentIds": [
+        "ropes"
+      ],
+      "level": "I",
+      "sets": 5,
+      "reps": "20 s",
+      "rest": 40,
+      "cue": "Lift with the hips and slam with intent.",
+      "link": ""
+    },
+    {
+      "id": "suspension-row",
+      "name": "Suspension row",
+      "muscles": [
+        "back",
+        "arms",
+        "core"
+      ],
+      "equipmentIds": [
+        "trx"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Body in a straight line and pull the chest to the handles.",
+      "link": ""
+    },
+    {
+      "id": "suspension-push-up",
+      "name": "Suspension push-up",
+      "muscles": [
+        "chest",
+        "core",
+        "arms"
+      ],
+      "equipmentIds": [
+        "trx"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Keep the body rigid and control the lowering.",
+      "link": ""
+    },
+    {
+      "id": "box-jump",
+      "name": "Box jump",
+      "muscles": [
+        "legs",
+        "glutes",
+        "cardio"
+      ],
+      "equipmentIds": [
+        "plyo"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "5",
+      "rest": 60,
+      "cue": "Land softly, stand tall on top and step down.",
+      "link": ""
+    },
+    {
+      "id": "step-up",
+      "name": "Step-up",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "plyo",
+        "benches"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 60,
+      "cue": "Drive through the lead heel and control the descent.",
+      "link": ""
+    },
+    {
+      "id": "kettlebell-swing",
+      "name": "Kettlebell swing",
+      "muscles": [
+        "glutes",
+        "legs",
+        "back",
+        "full body"
+      ],
+      "equipmentIds": [
+        "kb"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "15",
+      "rest": 60,
+      "cue": "Hinge, then snap the hips. The bell floats to chest height.",
+      "link": ""
+    },
+    {
+      "id": "goblet-squat",
+      "name": "Goblet squat",
+      "muscles": [
+        "legs",
+        "glutes",
+        "core"
+      ],
+      "equipmentIds": [
+        "kb",
+        "db"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Hold the weight at the chest and keep the elbows inside the knees.",
+      "link": ""
+    },
+    {
+      "id": "turkish-get-up",
+      "name": "Turkish get-up",
+      "muscles": [
+        "full body",
+        "core",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "kb"
+      ],
+      "level": "A",
+      "sets": 3,
+      "reps": "3 each",
+      "rest": 60,
+      "cue": "Eyes on the bell and move one step at a time.",
+      "link": ""
+    },
+    {
+      "id": "farmer-carry",
+      "name": "Farmer carry",
+      "muscles": [
+        "full body",
+        "core",
+        "arms"
+      ],
+      "equipmentIds": [
+        "kb",
+        "db"
+      ],
+      "level": "B",
+      "sets": 4,
+      "reps": "20 m",
+      "rest": 60,
+      "cue": "Stand tall with the shoulders back and walk with short steps.",
+      "link": ""
+    },
+    {
+      "id": "wall-ball",
+      "name": "Wall ball",
+      "muscles": [
+        "legs",
+        "shoulders",
+        "cardio"
+      ],
+      "equipmentIds": [
+        "medball"
+      ],
+      "level": "I",
+      "sets": 4,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Squat deep, drive up and throw to the target.",
+      "link": ""
+    },
+    {
+      "id": "rotational-throw",
+      "name": "Rotational throw",
+      "muscles": [
+        "core",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "medball"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 60,
+      "cue": "Rotate through the hips and release with a strong exhale.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-romanian-deadlift",
+      "name": "Dumbbell Romanian deadlift",
+      "muscles": [
+        "glutes",
+        "legs",
+        "back"
+      ],
+      "equipmentIds": [
+        "db"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Push the hips back and keep the weights close and the back flat.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-shoulder-press",
+      "name": "Dumbbell shoulder press",
+      "muscles": [
+        "shoulders",
+        "arms"
+      ],
+      "equipmentIds": [
+        "db"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Press overhead without arching the lower back.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-row",
+      "name": "Dumbbell row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "db",
+        "benches"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 60,
+      "cue": "Support one hand on the bench and row to the hip.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-bench-press",
+      "name": "Dumbbell bench press",
+      "muscles": [
+        "chest",
+        "arms",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "db",
+        "benches"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Shoulder blades down and back and lower to the chest line.",
+      "link": ""
+    },
+    {
+      "id": "incline-dumbbell-press",
+      "name": "Incline dumbbell press",
+      "muscles": [
+        "chest",
+        "shoulders",
+        "arms"
+      ],
+      "equipmentIds": [
+        "benches",
+        "db"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Bench at about 30 degrees and press up over the upper chest.",
+      "link": ""
+    },
+    {
+      "id": "bench-supported-row",
+      "name": "Bench-supported row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "benches"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Chest on the bench and row the elbows past your ribs.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-lunge",
+      "name": "Dumbbell lunge",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "db"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 60,
+      "cue": "Long step, drop straight down and push back through the front heel.",
+      "link": ""
+    },
+    {
+      "id": "bulgarian-split-squat",
+      "name": "Bulgarian split squat",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "db",
+        "benches"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 75,
+      "cue": "Back foot on the bench and the front shin vertical.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-lateral-raise",
+      "name": "Dumbbell lateral raise",
+      "muscles": [
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "db"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Lead with the elbows and stop at shoulder height.",
+      "link": ""
+    },
+    {
+      "id": "dumbbell-curl",
+      "name": "Dumbbell curl",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "db",
+        "barbell"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Elbows stay by the sides and no swinging.",
+      "link": ""
+    },
+    {
+      "id": "overhead-triceps-extension",
+      "name": "Overhead triceps extension",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "db",
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Elbows point forward and do not flare.",
+      "link": ""
+    },
+    {
+      "id": "cable-chop",
+      "name": "Cable chop",
+      "muscles": [
+        "core",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 45,
+      "cue": "Rotate through the torso with straight arms and a braced core.",
+      "link": ""
+    },
+    {
+      "id": "face-pull",
+      "name": "Face pull",
+      "muscles": [
+        "shoulders",
+        "back"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Pull to the face with the elbows high and squeeze the rear shoulders.",
+      "link": ""
+    },
+    {
+      "id": "triceps-pushdown",
+      "name": "Triceps pushdown",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Elbows pinned to the sides and a full lockout.",
+      "link": ""
+    },
+    {
+      "id": "cable-row",
+      "name": "Cable row",
+      "muscles": [
+        "back",
+        "arms"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Sit tall and row the handle to the lower ribs.",
+      "link": ""
+    },
+    {
+      "id": "cable-fly",
+      "name": "Cable fly",
+      "muscles": [
+        "chest"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Soft elbows and bring the hands together in an arc.",
+      "link": ""
+    },
+    {
+      "id": "pallof-press",
+      "name": "Pallof press",
+      "muscles": [
+        "core"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 30,
+      "cue": "Resist the pull, press out and hold, then return.",
+      "link": ""
+    },
+    {
+      "id": "cable-glute-kickback",
+      "name": "Cable glute kickback",
+      "muscles": [
+        "glutes"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "12 each",
+      "rest": 45,
+      "cue": "Hips square to the machine and kick straight back.",
+      "link": ""
+    },
+    {
+      "id": "cable-biceps-curl",
+      "name": "Cable biceps curl",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "cable"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Keep the elbows fixed and curl in a smooth arc.",
+      "link": ""
+    },
+    {
+      "id": "barbell-curl",
+      "name": "Barbell curl",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "barbell"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Elbows fixed and a controlled lowering.",
+      "link": ""
+    },
+    {
+      "id": "landmine-press",
+      "name": "Landmine press",
+      "muscles": [
+        "shoulders",
+        "chest",
+        "core"
+      ],
+      "equipmentIds": [
+        "barbell"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 60,
+      "cue": "Press at an angle from the shoulder and keep the ribs down.",
+      "link": ""
+    },
+    {
+      "id": "skull-crusher",
+      "name": "Skull crusher",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "barbell",
+        "benches"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Lower towards the forehead with the elbows pointing at the ceiling.",
+      "link": ""
+    },
+    {
+      "id": "preacher-curl",
+      "name": "Preacher curl",
+      "muscles": [
+        "arms"
+      ],
+      "equipmentIds": [
+        "preacher"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Upper arms flat on the pad and a controlled lowering.",
+      "link": ""
+    },
+    {
+      "id": "back-extension",
+      "name": "Back extension",
+      "muscles": [
+        "back",
+        "glutes",
+        "core"
+      ],
+      "equipmentIds": [
+        "backext"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Hinge at the hips and stop when the body is in line.",
+      "link": ""
+    },
+    {
+      "id": "reverse-hyper",
+      "name": "Reverse hyper",
+      "muscles": [
+        "glutes",
+        "back"
+      ],
+      "equipmentIds": [
+        "backext"
+      ],
+      "level": "I",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Swing the legs up with control and squeeze the glutes.",
+      "link": ""
+    },
+    {
+      "id": "plank-hold",
+      "name": "Plank hold",
+      "muscles": [
+        "core",
+        "full body"
+      ],
+      "equipmentIds": [
+        "mats"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "30 s",
+      "rest": 30,
+      "cue": "Ribs down, glutes tight and a straight line from head to heels.",
+      "link": ""
+    },
+    {
+      "id": "dead-bug",
+      "name": "Dead bug",
+      "muscles": [
+        "core"
+      ],
+      "equipmentIds": [
+        "mats"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 30,
+      "cue": "Press the lower back into the floor and move opposite arm and leg slowly.",
+      "link": ""
+    },
+    {
+      "id": "bird-dog",
+      "name": "Bird dog",
+      "muscles": [
+        "core",
+        "back",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "mats"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "8 each",
+      "rest": 30,
+      "cue": "Reach long, keep the hips level and pause at the top.",
+      "link": ""
+    },
+    {
+      "id": "side-plank",
+      "name": "Side plank",
+      "muscles": [
+        "core"
+      ],
+      "equipmentIds": [
+        "mats"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "30 s each",
+      "rest": 30,
+      "cue": "Stack the shoulders and hips and lift the hips high.",
+      "link": ""
+    },
+    {
+      "id": "push-up",
+      "name": "Push-up",
+      "muscles": [
+        "chest",
+        "arms",
+        "core"
+      ],
+      "equipmentIds": [
+        "mats",
+        "trx"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 60,
+      "cue": "Body in a straight line and chest to the floor with control.",
+      "link": ""
+    },
+    {
+      "id": "bodyweight-squat",
+      "name": "Bodyweight squat",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "mats",
+        "classbar"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Weight in the heels and chest up.",
+      "link": ""
+    },
+    {
+      "id": "lunges",
+      "name": "Lunges",
+      "muscles": [
+        "legs",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "mats",
+        "classbar"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10 each",
+      "rest": 60,
+      "cue": "Long step with a tall torso.",
+      "link": ""
+    },
+    {
+      "id": "step-aerobics",
+      "name": "Step aerobics",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "mats"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "10 min",
+      "rest": 0,
+      "cue": "Follow the choreography and land softly.",
+      "link": ""
+    },
+    {
+      "id": "barbell-complex",
+      "name": "Barbell complex",
+      "muscles": [
+        "full body",
+        "legs",
+        "back"
+      ],
+      "equipmentIds": [
+        "classbar"
+      ],
+      "level": "A",
+      "sets": 4,
+      "reps": "6 each",
+      "rest": 90,
+      "cue": "Move through the lifts without putting the bar down.",
+      "link": ""
+    },
+    {
+      "id": "banded-lateral-walk",
+      "name": "Banded lateral walk",
+      "muscles": [
+        "glutes",
+        "legs"
+      ],
+      "equipmentIds": [
+        "bands"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "12 each",
+      "rest": 30,
+      "cue": "Keep tension on the band and the toes forward.",
+      "link": ""
+    },
+    {
+      "id": "band-pull-apart",
+      "name": "Band pull-apart",
+      "muscles": [
+        "shoulders",
+        "back"
+      ],
+      "equipmentIds": [
+        "bands"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 30,
+      "cue": "Pull to the chest and squeeze the shoulder blades.",
+      "link": ""
+    },
+    {
+      "id": "banded-external-rotation",
+      "name": "Banded external rotation",
+      "muscles": [
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "bands"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "15 each",
+      "rest": 30,
+      "cue": "Elbow tucked to the ribs and a slow rotation.",
+      "link": ""
+    },
+    {
+      "id": "hip-mobility-flow",
+      "name": "Hip mobility flow",
+      "muscles": [
+        "mobility",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Move slowly and breathe through each position.",
+      "link": ""
+    },
+    {
+      "id": "cat-cow",
+      "name": "Cat-cow",
+      "muscles": [
+        "mobility",
+        "back",
+        "core"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Move one vertebra at a time with the breath.",
+      "link": ""
+    },
+    {
+      "id": "child-pose",
+      "name": "Child pose",
+      "muscles": [
+        "mobility",
+        "back"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "45 s",
+      "rest": 15,
+      "cue": "Sit back to the heels and breathe into the lower back.",
+      "link": ""
+    },
+    {
+      "id": "downward-dog",
+      "name": "Downward dog",
+      "muscles": [
+        "mobility",
+        "shoulders",
+        "legs"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Push the floor away and lengthen the spine.",
+      "link": ""
+    },
+    {
+      "id": "thread-the-needle",
+      "name": "Thread the needle",
+      "muscles": [
+        "mobility",
+        "back",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s each",
+      "rest": 15,
+      "cue": "Rotate through the upper back and keep the hips over the knees.",
+      "link": ""
+    },
+    {
+      "id": "hamstring-stretch",
+      "name": "Hamstring stretch",
+      "muscles": [
+        "mobility",
+        "legs"
+      ],
+      "equipmentIds": [
+        "yoga"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "40 s each",
+      "rest": 15,
+      "cue": "Keep the back long and fold from the hips.",
+      "link": ""
+    },
+    {
+      "id": "thoracic-roll",
+      "name": "Thoracic roll",
+      "muscles": [
+        "mobility",
+        "back"
+      ],
+      "equipmentIds": [
+        "rollers"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Roll slowly along the upper back with the arms crossed.",
+      "link": ""
+    },
+    {
+      "id": "quad-and-calf-roll",
+      "name": "Quad and calf roll",
+      "muscles": [
+        "mobility",
+        "legs"
+      ],
+      "equipmentIds": [
+        "rollers"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Pause on tight spots and breathe out.",
+      "link": ""
+    },
+    {
+      "id": "lat-and-glute-roll",
+      "name": "Lat and glute roll",
+      "muscles": [
+        "mobility",
+        "back",
+        "glutes"
+      ],
+      "equipmentIds": [
+        "rollers"
+      ],
+      "level": "B",
+      "sets": 2,
+      "reps": "30 s",
+      "rest": 15,
+      "cue": "Slow passes and stay off the joints.",
+      "link": ""
+    },
+    {
+      "id": "aqua-walking",
+      "name": "Aqua walking",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "leisure"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "10 min",
+      "rest": 0,
+      "cue": "Tall posture and a long stride against the water.",
+      "link": ""
+    },
+    {
+      "id": "aqua-intervals",
+      "name": "Aqua intervals",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "leisure"
+      ],
+      "level": "I",
+      "sets": 6,
+      "reps": "30 s",
+      "rest": 30,
+      "cue": "Fast efforts followed by easy recoveries.",
+      "link": ""
+    },
+    {
+      "id": "aqua-dumbbell-press",
+      "name": "Aqua dumbbell press",
+      "muscles": [
+        "arms",
+        "shoulders"
+      ],
+      "equipmentIds": [
+        "aquaeq"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "15",
+      "rest": 45,
+      "cue": "Press the weights down and up through the water.",
+      "link": ""
+    },
+    {
+      "id": "water-jogging",
+      "name": "Water jogging",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "leisure",
+        "aquaeq"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "8 min",
+      "rest": 0,
+      "cue": "Run in place with high knees.",
+      "link": ""
+    },
+    {
+      "id": "rally-drills",
+      "name": "Rally drills",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "padel1",
+        "padel2"
+      ],
+      "level": "B",
+      "sets": 1,
+      "reps": "10 min",
+      "rest": 0,
+      "cue": "Keep the ball in play and move your feet between shots.",
+      "link": ""
+    },
+    {
+      "id": "footwork-ladder",
+      "name": "Footwork ladder",
+      "muscles": [
+        "cardio",
+        "legs"
+      ],
+      "equipmentIds": [
+        "padel1",
+        "padel2"
+      ],
+      "level": "B",
+      "sets": 4,
+      "reps": "30 s",
+      "rest": 30,
+      "cue": "Quick, light feet and stay on the toes.",
+      "link": ""
+    },
+    {
+      "id": "match-play",
+      "name": "Match play",
+      "muscles": [
+        "cardio",
+        "full body"
+      ],
+      "equipmentIds": [
+        "padel1",
+        "padel2"
+      ],
+      "level": "I",
+      "sets": 1,
+      "reps": "20 min",
+      "rest": 0,
+      "cue": "Play to a set number of points with full effort.",
+      "link": ""
+    },
+    {
+      "id": "serve-practice",
+      "name": "Serve practice",
+      "muscles": [
+        "arms",
+        "shoulders",
+        "core"
+      ],
+      "equipmentIds": [
+        "padel1",
+        "padel2"
+      ],
+      "level": "B",
+      "sets": 3,
+      "reps": "10",
+      "rest": 30,
+      "cue": "Smooth toss and a relaxed swing.",
+      "link": ""
+    }
+  ],
+  "templates": [
+    {
+      "id": "t-1",
+      "name": "Beginner full body",
+      "notes": "",
+      "created": 1,
+      "items": [
+        {
+          "eid": "legpress",
+          "xid": null,
+          "exercise": "Leg press",
+          "sets": 3,
+          "reps": "10",
+          "rest": 60,
+          "note": ""
+        },
+        {
+          "eid": "chestpress",
+          "xid": null,
+          "exercise": "Seated chest press",
+          "sets": 3,
+          "reps": "10",
+          "rest": 60,
+          "note": ""
+        }
+      ],
+      "gymId": ""
+    }
+  ],
+  "session": {
+    "title": "Example: full-body strength",
+    "client": "Example client",
+    "coach": "",
+    "date": "2026-11-15",
+    "notes": "",
+    "items": [
+      {
+        "equipmentId": "tread",
+        "exerciseId": "incline-walk",
+        "exercise": "Incline walk",
+        "sets": 1,
+        "reps": "8 min",
+        "restSeconds": 0,
+        "note": ""
+      },
+      {
+        "equipmentId": "legpress",
+        "exerciseId": "leg-press",
+        "exercise": "Leg press",
+        "sets": 3,
+        "reps": "10",
+        "restSeconds": 60,
+        "note": ""
+      },
+      {
+        "equipmentId": "chestpress",
+        "exerciseId": "seated-chest-press",
+        "exercise": "Seated chest press",
+        "sets": 3,
+        "reps": "10",
+        "restSeconds": 60,
+        "note": ""
+      },
+      {
+        "equipmentId": "seatedrow",
+        "exerciseId": "seated-row",
+        "exercise": "Seated row",
+        "sets": 3,
+        "reps": "12",
+        "restSeconds": 60,
+        "note": ""
+      },
+      {
+        "equipmentId": "db",
+        "exerciseId": "dumbbell-romanian-deadlift",
+        "exercise": "Dumbbell Romanian deadlift",
+        "sets": 3,
+        "reps": "10",
+        "restSeconds": 60,
+        "note": ""
+      },
+      {
+        "equipmentId": "mats",
+        "exerciseId": "plank-hold",
+        "exercise": "Plank hold",
+        "sets": 3,
+        "reps": "30 s",
+        "restSeconds": 30,
+        "note": ""
+      }
+    ]
+  }
+}

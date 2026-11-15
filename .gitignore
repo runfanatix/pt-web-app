@@ -1,20 +1,29 @@
-# OS files
+# OS / editor
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Editor files
 .vscode/
 .idea/
 *.swp
-*.swo
 
-# Environment
+# Secrets
 .env
-.env.local
+.env.*
+!.env.example
 
-# Logs
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.next/
+coverage/
+playwright-report/
+test-results/
 *.log
 
-# Node (if added later)
-node_modules/
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# External reference repo (cloned separately, read-only)
+design-reference/
