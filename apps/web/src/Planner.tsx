@@ -1,22 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  buildHistoryEntry,
   exercisesFor,
+  fmtClock,
+  isActive,
+  isRunView,
   itemsPerFloor,
   remapItems,
+  runLogText,
   type GymSummary,
+  type HistoryEntry,
   type Layout,
   type LibraryExercise,
+  type RunState,
 } from '@pt/core';
 import { TABS, type Mode, type TabId } from './tabs.ts';
 import { GymBar } from './components/GymBar.tsx';
 import { FloorPlan } from './components/FloorPlan.tsx';
 import { FloorTabs, Legend, MuscleChips } from './components/PlanControls.tsx';
 import { MachinePopup } from './components/MachinePopup.tsx';
+import { RunHud } from './components/RunHud.tsx';
+import { RunTab } from './components/RunTab.tsx';
 import { SessionTab } from './components/SessionTab.tsx';
 import { TemplatesPanel } from './components/TemplatesPanel.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
+import type { HistoryApi } from './data/history.ts';
 import type { Template, TemplateApi } from './data/templates.ts';
+import { copyText } from './lib/clipboard.ts';
+import { useRun } from './run/useRun.ts';
+import { newUid } from './session/sessionState.ts';
 import { useSession } from './session/useSession.ts';
 
 interface Props {
@@ -24,6 +37,8 @@ interface Props {
   loadGym: GymDataLoader;
   /** Null until the trainer profile has loaded; templates are unavailable until then. */
   templates: TemplateApi | null;
+  /** Null until the trainer profile has loaded; finished runs cannot be saved until then. */
+  history: HistoryApi | null;
   onSignOut: () => void;
 }
 
@@ -33,7 +48,7 @@ interface ToastState {
   view: boolean;
 }
 
-export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
+export function Planner({ gyms, loadGym, templates, history, onSignOut }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
   const [tab, setTab] = useState<TabId>('zone');
   const [gymId, setGymId] = useState(gyms[0]?.id ?? '');
@@ -42,11 +57,78 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
   const [selZone, setSelZone] = useState<string | null>(null);
   const [selEq, setSelEq] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [runMsg, setRunMsg] = useState('');
+  const [announce, setAnnounce] = useState('');
+  const [past, setPast] = useState<HistoryEntry[] | null>(null);
+  const [pastError, setPastError] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hudRef = useRef<HTMLDivElement>(null);
   const gym = gyms.find((g) => g.id === gymId) ?? gyms[0];
   const gymState = useGymData(loadGym, gym?.id ?? null);
   const { session, dispatch } = useSession(gym?.id ?? null);
+  const rc = useRun(session.items);
+  const run = rc.run;
+  const runLive = isActive(run);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const data = gymState.status === 'ready' ? gymState.data : null;
+  const layout: Layout | null = data?.layout ?? null;
+  const library: LibraryExercise[] = data?.library ?? [];
+  const activeFloor = layout ? (layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!) : null;
+  const equipById = new Map((layout?.equipment ?? []).map((e) => [e.id, e]));
+  const zoneName = new Map((layout?.zones ?? []).map((z) => [z.id, z.name]));
+  const floorName = new Map((layout?.floors ?? []).map((f) => [f.id, f.name]));
+  const placeOf = (e: Layout['equipment'][number]) =>
+    ((layout?.floors.length ?? 0) > 1 ? `${floorName.get(e.floor) ?? ''} · ` : '') +
+    (zoneName.get(e.zone) ?? '');
+  const showRun = isRunView(run, tab === 'run', mode === 'edit');
+
+  // Past runs for the Run tab.
+  const refreshPast = async () => {
+    if (!history) return;
+    try {
+      setPast(await history.list());
+      setPastError('');
+    } catch (err) {
+      setPastError(`Could not load past runs: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  useEffect(() => {
+    void refreshPast();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
+
+  // Keep the sticky planner panel clear of the run bar.
+  useEffect(() => {
+    const set = () =>
+      document.documentElement.style.setProperty('--hudh', `${hudRef.current?.offsetHeight ?? 0}px`);
+    set();
+    window.addEventListener('resize', set);
+    return () => {
+      window.removeEventListener('resize', set);
+      document.documentElement.style.removeProperty('--hudh');
+    };
+  });
+
+  // Follow the current machine: switch to its floor, centre it, and announce it for screen readers.
+  useEffect(() => {
+    const it = run.cur ? session.items.find((i) => i.uid === run.cur) : undefined;
+    const e = it ? equipById.get(it.eid) : undefined;
+    if (!it || !e || !layout) return;
+    setFloorId(e.floor);
+    setAnnounce(
+      `Now at ${e.name}: ${it.exercise}. Step ${Math.min(run.order.length + 1, session.items.length)} of ${session.items.length}.`,
+    );
+    const sc = document.querySelector<HTMLElement>('.mapscroll');
+    const svg = document.getElementById('map');
+    const f = layout.floors.find((x) => x.id === e.floor);
+    if (sc && svg && f && sc.scrollWidth > sc.clientWidth && typeof sc.scrollTo === 'function') {
+      const x = (e.x / f.w) * svg.getBoundingClientRect().width;
+      sc.scrollTo({ left: Math.max(0, x - sc.clientWidth / 2), behavior: 'smooth' });
+    }
+    // Only when the current step changes, not on every tick or edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.cur]);
 
   if (!gym) {
     return (
@@ -64,11 +146,7 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
     );
   }
 
-  const data = gymState.status === 'ready' ? gymState.data : null;
-  const layout: Layout | null = data?.layout ?? null;
-  const library: LibraryExercise[] = data?.library ?? [];
-  const activeFloor = layout ? (layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!) : null;
-  const equipById = new Map((layout?.equipment ?? []).map((e) => [e.id, e]));
+  const gymTitle = [gym.name, gym.branch].filter(Boolean).join(' ');
 
   function say(msg: string, view = false) {
     clearTimeout(toastTimer.current);
@@ -96,8 +174,9 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
     if (e) setFloorId(e.floor);
   }
 
-  async function applyTemplate(t: Template, how: 'replace' | 'append') {
+  async function applyTemplate(t: Template, how: 'replace' | 'append', stay = false) {
     if (!layout) return;
+    if (runLive) return say('Finish or reset the live run first.');
     const candidates = layout.equipment.map((e) => ({ id: e.id, name: e.name, type: e.type }));
     const present = new Set(candidates.map((c) => c.id));
     const links = Object.fromEntries(library.map((x) => [x.id, x.equipmentIds]));
@@ -118,7 +197,7 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
     );
     setSelEq(null);
     focusFirstFloor(r.items[0]?.eid);
-    setTab('session');
+    if (!stay) setTab('session');
     const bits = [
       `${how === 'replace' ? 'Loaded' : 'Added'} "${t.name}" (${r.items.length} exercise${r.items.length === 1 ? '' : 's'})`,
     ];
@@ -127,24 +206,118 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
     say(bits.join('. ') + '.');
   }
 
-  const name = [gym.name, gym.branch].filter(Boolean).join(' ');
-  const popupEq = mode === 'plan' && selEq ? equipById.get(selEq) : undefined;
+  /* ---------------------------------------------------------------- live run */
+
+  function entryFor(r: RunState, id: string, allowEmpty = false): HistoryEntry | null {
+    return buildHistoryEntry({
+      id,
+      run: r,
+      items: session.items,
+      meta: session.meta,
+      equipment: equipById,
+      place: placeOf,
+      gym: { id: gym!.id, name: gymTitle },
+      allowEmpty,
+    });
+  }
+
+  /** Saves a finished run to history. The same id is reused if the run is undone and finished again. */
+  async function saveRun(r: RunState) {
+    const id = r.histId || newUid();
+    const entry = entryFor(r, id);
+    if (!entry) return say('Workout finished.');
+    rc.markSaved(id);
+    if (!history)
+      return say(
+        `Workout finished: ${fmtClock(r.total)}. History is not available yet, so it was not saved.`,
+      );
+    try {
+      await history.save(entry);
+      say(`Workout finished: ${fmtClock(r.total)}. Saved to history.`);
+      await refreshPast();
+    } catch (err) {
+      say(`Workout finished, but it could not be saved: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  function startRun() {
+    if (!session.items.length) return;
+    rc.start();
+    setSelEq(null);
+    setRunMsg('');
+  }
+  function nextStep() {
+    const r = rc.next();
+    if (r.status === 'finished') void saveRun(r);
+  }
+  function endRun() {
+    const r = rc.finish();
+    if (r.status === 'finished') void saveRun(r);
+  }
+  function resetRun() {
+    rc.reset();
+    setRunMsg('');
+    setAnnounce('');
+  }
+  async function copyLog() {
+    const entry = entryFor(run, run.histId || 'live', true);
+    if (!entry) return;
+    const ok = await copyText(runLogText(entry));
+    setRunMsg(
+      ok ? 'Workout log copied.' : 'Could not copy. Select the text in Past runs and copy it by hand.',
+    );
+  }
+  async function copyEntry(e: HistoryEntry) {
+    const ok = await copyText(runLogText(e));
+    setRunMsg(ok ? `Log for "${e.title}" copied.` : 'Could not copy the log.');
+  }
+  async function deleteEntry(e: HistoryEntry) {
+    if (!history) return;
+    try {
+      await history.remove(e.id);
+      setRunMsg(`Deleted "${e.title}".`);
+      await refreshPast();
+    } catch (err) {
+      setRunMsg(`Could not delete: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** A tap on a machine: during a live run it jumps to that machine; otherwise it opens the exercises pop-up. */
+  function selectMachine(id: string | null) {
+    if (id && runLive && mode === 'plan') {
+      const res = rc.jumpToMachine(id);
+      const name = equipById.get(id)?.name ?? 'machine';
+      say(
+        res.outcome === 'jumped'
+          ? `Now at ${name}`
+          : res.outcome === 'here'
+            ? `Already at ${name}`
+            : `${name} is not in the routine or is already done`,
+      );
+      return;
+    }
+    setSelEq(id);
+  }
+
+  const popupEq = mode === 'plan' && !runLive && selEq ? equipById.get(selEq) : undefined;
   const hint =
     mode === 'edit'
       ? 'Layout editing arrives in a later phase. For now the plan is read-only.'
-      : 'Click a machine to see its exercises and add one to the session. Click a zone to label all of its equipment.';
-  const zoneName = new Map((layout?.zones ?? []).map((z) => [z.id, z.name]));
-  const floorName = new Map((layout?.floors ?? []).map((f) => [f.id, f.name]));
-  const placeOf = (e: Layout['equipment'][number]) =>
-    ((layout?.floors.length ?? 0) > 1 ? `${floorName.get(e.floor) ?? ''} · ` : '') +
-    (zoneName.get(e.zone) ?? '');
+      : runLive
+        ? 'Workout running. Tap a machine on the plan to jump to it, or use Done, next on the bar above.'
+        : run.status === 'finished'
+          ? 'Workout finished. Copy the log from the Run tab, or reset to run it again.'
+          : tab === 'run'
+            ? 'Blue machines are in your routine. Press Start workout to begin. You can still tap a machine to add more exercises.'
+            : 'Click a machine to see its exercises and add one to the session. Click a zone to label all of its equipment.';
   const gymNames = Object.fromEntries(gyms.map((g) => [g.id, [g.name, g.branch].filter(Boolean).join(' ')]));
+  const showHud = showRun && session.items.length > 0;
 
   return (
     <div className="wrap">
       <header className="top">
         <div>
-          <p className="eyebrow">{[name, gym.address].filter(Boolean).join(' · ')}</p>
+          <p className="eyebrow">{[gymTitle, gym.address].filter(Boolean).join(' · ')}</p>
           <h1>{gym.branch || gym.name} Zone Planner</h1>
           <p className="lede">
             Click a machine on the plan, pick an exercise from its pop-up, and it lands in your session.
@@ -165,7 +338,29 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
         </div>
       </header>
 
-      <GymBar gyms={gyms} gymId={gym.id} onChange={changeGym} />
+      {showHud && layout && (
+        <div ref={hudRef}>
+          <RunHud
+            run={run}
+            items={session.items}
+            equipById={equipById}
+            title={session.meta.title}
+            client={session.meta.client}
+            onStart={startRun}
+            onPause={rc.pause}
+            onResume={rc.resume}
+            onBack={rc.back}
+            onNext={nextStep}
+            onCopyLog={() => void copyLog()}
+            onReset={resetRun}
+          />
+        </div>
+      )}
+      <p className="sr" role="status" aria-live="polite">
+        {announce}
+      </p>
+
+      <GymBar gyms={gyms} gymId={gym.id} onChange={changeGym} disabled={runLive} />
 
       <main className="grid">
         <section className="mapcol" aria-label="Gym floor map">
@@ -195,12 +390,13 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
                 selZone={selZone}
                 selEq={selEq}
                 items={session.items}
+                run={showRun ? run : null}
                 onSelectZone={setSelZone}
-                onSelectEq={setSelEq}
+                onSelectEq={selectMachine}
               />
             )}
           </div>
-          <Legend />
+          <Legend run={showRun} />
           <p className="hint">{hint}</p>
         </section>
         <aside className="panel" aria-label="Planner panel">
@@ -217,6 +413,7 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
               >
                 {t.id === 'zone' && mode === 'edit' ? 'Layout' : t.label}
                 {t.id === 'session' ? ` (${session.items.length})` : ''}
+                {t.id === 'run' && runLive ? ' ●' : ''}
               </button>
             ))}
           </div>
@@ -252,10 +449,30 @@ export function Planner({ gyms, loadGym, templates, onSignOut }: Props) {
                 ) : null}
               </SessionTab>
             )}
-            {!layout && (tab === 'zone' || tab === 'session') && (
+            {tab === 'run' && layout && (
+              <RunTab
+                run={run}
+                items={session.items}
+                equipById={equipById}
+                templates={templates}
+                history={past}
+                historyError={pastError}
+                onStart={startRun}
+                onEnd={endRun}
+                onReset={resetRun}
+                onGo={rc.go}
+                onCopyLog={() => void copyLog()}
+                onLoadTemplate={(t) => void applyTemplate(t, 'replace', true)}
+                onCopyEntry={(e) => void copyEntry(e)}
+                onDeleteEntry={(e) => void deleteEntry(e)}
+                status={runMsg}
+                place={placeOf}
+              />
+            )}
+            {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
               <p className="hint">Waiting for the floor plan…</p>
             )}
-            {tab !== 'zone' && tab !== 'session' && (
+            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && (
               <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
             )}
           </div>

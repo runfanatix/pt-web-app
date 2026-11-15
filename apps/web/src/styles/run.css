@@ -1,0 +1,339 @@
+/* Live run, run history and the run bar (ported from the prototype). */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* markers: ready blue, now orange, still-to-do red, done grey */
+.mk[class*='st-'] .gl {
+  fill: var(--run-ink);
+}
+.mk.st-ready .body {
+  fill: var(--run-ready);
+}
+.mk.st-next .body {
+  fill: var(--run-next);
+}
+.mk.st-done .body,
+.mk.st-skip .body {
+  fill: var(--run-done);
+}
+.mk.st-now .body {
+  fill: var(--run-now);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+.mk.st-now .gl {
+  fill: var(--run-now-ink);
+}
+.mk.st-done,
+.mk.st-skip {
+  opacity: 0.8;
+}
+.mk[class*='st-'] .bdg {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.mk[class*='st-'] .bdt {
+  fill: var(--ink);
+}
+.mk.st-now .ml {
+  font-weight: 600;
+}
+.ml .rt {
+  font: 600 11px var(--f-mono);
+}
+.ring-now {
+  fill: none;
+  stroke: var(--run-now);
+  stroke-width: 3;
+}
+.pulse {
+  fill: none;
+  stroke: var(--run-now);
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 1.5s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+.rl {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.rl-ready {
+  stroke: var(--run-ready);
+  stroke-dasharray: 7 5;
+}
+.rl-next {
+  stroke: var(--run-next);
+  stroke-dasharray: 7 5;
+  animation: flow 1s linear infinite;
+}
+.rl-done {
+  stroke: var(--run-done);
+  opacity: 0.6;
+}
+.rl-skip {
+  stroke: var(--run-done);
+  stroke-dasharray: 3 5;
+  opacity: 0.45;
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+.xf-now rect {
+  stroke: var(--run-now);
+  stroke-width: 2;
+}
+.xf-next rect {
+  stroke: var(--run-next);
+}
+.xf-done rect,
+.xf-skip rect {
+  stroke: var(--run-done);
+}
+.sw {
+  flex: none;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.sw-ready {
+  background: var(--run-ready);
+}
+.sw-now {
+  background: var(--run-now);
+  box-shadow: 0 0 0 2px var(--ink) inset;
+}
+.sw-next {
+  background: var(--run-next);
+}
+.sw-done {
+  background: var(--run-done);
+}
+
+/* the run bar above the plan */
+.hud {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--ink);
+  border-left-width: 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+.hud.st-ready {
+  border-left-color: var(--run-ready);
+}
+.hud.st-now {
+  border-left-color: var(--run-now);
+}
+.hud.st-done {
+  border-left-color: var(--run-done);
+}
+.clock {
+  display: flex;
+  flex-direction: column;
+}
+.clock .lab,
+.hudnow .lab {
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.clock b {
+  font: 600 30px/1.1 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.hudnow {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.hudnow strong {
+  font: 600 17px/1.25 var(--f-display);
+  overflow-wrap: anywhere;
+}
+.hudnow .sub {
+  overflow-wrap: anywhere;
+}
+.hudbtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.btn.now {
+  background: var(--run-now);
+  border-color: var(--run-now);
+  color: var(--run-now-ink);
+}
+@media (max-width: 640px) {
+  .clock b {
+    font-size: 22px;
+  }
+  .hud {
+    padding: 8px 10px;
+    gap: 6px 14px;
+  }
+}
+
+/* run tab */
+.runlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ri {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-left-width: 6px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+.ri .txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ri .txt strong {
+  overflow-wrap: anywhere;
+}
+.ri .rtime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.ri .rtime b {
+  font: 600 16px var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.chipst {
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ri.st-ready {
+  border-left-color: var(--run-ready);
+}
+.ri.st-ready .num {
+  background: var(--run-ready);
+  color: var(--run-ink);
+}
+.ri.st-now {
+  border-left-color: var(--run-now);
+  background: var(--paper);
+}
+.ri.st-now .num {
+  background: var(--run-now);
+  color: var(--run-now-ink);
+}
+.ri.st-now .chipst {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ri.st-next {
+  border-left-color: var(--run-next);
+}
+.ri.st-next .num {
+  background: var(--run-next);
+  color: var(--run-ink);
+}
+.ri.st-done,
+.ri.st-skip {
+  border-left-color: var(--run-done);
+  opacity: 0.75;
+}
+.ri.st-done .num,
+.ri.st-skip .num {
+  background: var(--run-done);
+  color: var(--run-ink);
+}
+
+/* history */
+.stack > ul.stack,
+ul.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+details.hist {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: var(--surface);
+}
+details.hist summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+details.hist summary strong {
+  overflow-wrap: anywhere;
+}
+details.hist[open] summary {
+  margin-bottom: 8px;
+}
+.hrows {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.hrows li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.hrows b {
+  font: 600 13px var(--f-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

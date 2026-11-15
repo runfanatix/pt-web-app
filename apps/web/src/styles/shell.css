@@ -202,8 +202,8 @@ h1 {
 @media (min-width: 921px) {
   .panel {
     position: sticky;
-    top: 12px;
-    max-height: calc(100vh - 24px);
+    top: calc(12px + var(--hudh, 0px));
+    max-height: calc(100vh - 24px - var(--hudh, 0px));
     overflow-y: auto;
   }
 }

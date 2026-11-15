@@ -1,7 +1,8 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { exercisesFor, type GymSummary } from '@pt/core';
+import { exercisesFor, type GymSummary, type HistoryEntry } from '@pt/core';
 import { Planner } from './Planner.tsx';
+import type { HistoryApi } from './data/history.ts';
 import type { Template, TemplateApi } from './data/templates.ts';
 import { bedfordviewData } from './test-utils.ts';
 
@@ -42,6 +43,26 @@ function fakeTemplates(initial: Template[] = []) {
   return { api, store };
 }
 
+/** In-memory stand-in for the runs tables; share one between mounts to simulate a reload. */
+function fakeHistory(initial: HistoryEntry[] = []) {
+  const store = [...initial];
+  const api: HistoryApi = {
+    list: vi.fn(async () => store.slice().sort((a, b) => b.startedAt - a.startedAt)),
+    save: vi.fn(async (e: HistoryEntry) => {
+      const i = store.findIndex((x) => x.id === e.id);
+      if (i >= 0) store[i] = e;
+      else store.push(e);
+    }),
+    remove: vi.fn(async (id: string) => {
+      store.splice(
+        store.findIndex((x) => x.id === id),
+        1,
+      );
+    }),
+  };
+  return { api, store };
+}
+
 const ground = data.layout.floors[0]!;
 const upper = data.layout.floors[1]!;
 /** Machines on the ground floor that have linked exercises. */
@@ -52,12 +73,19 @@ const machineA = machines[0]!;
 const machineB = machines[machines.length - 1]!;
 const firstOf = (eid: string) => exercisesFor(library, eid)[0]!;
 
-function mount(over: Partial<Parameters<typeof Planner>[0]> = {}) {
+function mount(over: Partial<Parameters<typeof Planner>[0]> = {}, h = fakeHistory()) {
   const t = fakeTemplates();
   const view = render(
-    <Planner gyms={[bedfordview]} loadGym={loadGym} templates={t.api} onSignOut={() => {}} {...over} />,
+    <Planner
+      gyms={[bedfordview]}
+      loadGym={loadGym}
+      templates={t.api}
+      history={h.api}
+      onSignOut={() => {}}
+      {...over}
+    />,
   );
-  return { ...view, templates: t };
+  return { ...view, templates: t, history: h };
 }
 
 async function ready() {
@@ -296,7 +324,13 @@ describe('templates', () => {
   async function sessionWithItems(templates?: ReturnType<typeof fakeTemplates>) {
     const t = templates ?? fakeTemplates();
     const view = render(
-      <Planner gyms={[bedfordview]} loadGym={loadGym} templates={t.api} onSignOut={() => {}} />,
+      <Planner
+        gyms={[bedfordview]}
+        loadGym={loadGym}
+        templates={t.api}
+        history={null}
+        onSignOut={() => {}}
+      />,
     );
     await ready();
     const x1 = await addFrom(view.container, machineA.id);
@@ -364,7 +398,15 @@ describe('templates', () => {
       ],
     };
     const t = fakeTemplates([stored]);
-    render(<Planner gyms={[bedfordview]} loadGym={loadGym} templates={t.api} onSignOut={() => {}} />);
+    render(
+      <Planner
+        gyms={[bedfordview]}
+        loadGym={loadGym}
+        templates={t.api}
+        history={null}
+        onSignOut={() => {}}
+      />,
+    );
     await ready();
     fireEvent.click(screen.getByRole('tab', { name: 'Session (0)' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Load From elsewhere' }));

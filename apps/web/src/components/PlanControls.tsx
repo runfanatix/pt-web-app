@@ -66,15 +66,35 @@ export function MuscleChips({ filter, onChange }: { filter: string; onChange: (m
   );
 }
 
-export function Legend() {
+const RUN_LEGEND = [
+  ['ready', 'In the routine'],
+  ['now', 'Current machine'],
+  ['next', 'Still to do'],
+  ['done', 'Completed'],
+] as const;
+
+/** Machine kinds in the plan view; progress colours in the live run view. */
+export function Legend({ run = false }: { run?: boolean }) {
   return (
     <ul className="legend" aria-label="Legend">
-      {Object.values(TYPE_LETTERS).map((t) => (
-        <li key={t.letter}>
-          <span className="dot">{t.letter}</span>
-          {t.name}
-        </li>
-      ))}
+      {run ? (
+        <>
+          {RUN_LEGEND.map(([k, label]) => (
+            <li key={k}>
+              <span className={`sw sw-${k}`} />
+              {label}
+            </li>
+          ))}
+          <li>Numbers show the step order</li>
+        </>
+      ) : (
+        Object.values(TYPE_LETTERS).map((t) => (
+          <li key={t.letter}>
+            <span className="dot">{t.letter}</span>
+            {t.name}
+          </li>
+        ))
+      )}
     </ul>
   );
 }

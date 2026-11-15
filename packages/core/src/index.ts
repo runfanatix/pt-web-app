@@ -5,3 +5,5 @@ export * from './seed-library.ts';
 export * from './geometry.ts';
 export * from './layout-rows.ts';
 export * from './session.ts';
+export * from './run.ts';
+export * from './history.ts';

@@ -5,6 +5,7 @@ import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
 import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
+import { createHistoryApi, type HistoryApi } from './data/history.ts';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
 
@@ -36,11 +37,20 @@ function SignedIn() {
   const state = useGyms(client);
   const loadGym = useMemo(() => createGymDataLoader(client), [client]);
   const [templates, setTemplates] = useState<TemplateApi | null>(null);
+  const [history, setHistory] = useState<HistoryApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
-      (id) => active && setTemplates(createTemplateApi(client, id)),
-      () => active && setTemplates(null),
+      (id) => {
+        if (!active) return;
+        setTemplates(createTemplateApi(client, id));
+        setHistory(createHistoryApi(client, id));
+      },
+      () => {
+        if (!active) return;
+        setTemplates(null);
+        setHistory(null);
+      },
     );
     return () => {
       active = false;
@@ -49,7 +59,13 @@ function SignedIn() {
   if (state.status === 'loading') return <Status>Loading your gyms…</Status>;
   if (state.status === 'error') return <Status>{`Could not load your gyms: ${state.message}`}</Status>;
   return (
-    <Planner gyms={state.gyms} loadGym={loadGym} templates={templates} onSignOut={() => void signOut()} />
+    <Planner
+      gyms={state.gyms}
+      loadGym={loadGym}
+      templates={templates}
+      history={history}
+      onSignOut={() => void signOut()}
+    />
   );
 }
 

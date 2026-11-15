@@ -73,9 +73,17 @@ export interface StoredTemplate {
   template_items: Record<string, unknown>[];
 }
 
-/** Signs in and serves the Bedfordview data. Templates live in memory for the page's lifetime. */
-export async function signInWithBedfordview(page: Page): Promise<{ templates: StoredTemplate[] }> {
+export interface StoredRun extends Record<string, unknown> {
+  id: string;
+  run_steps: Record<string, unknown>[];
+}
+
+/** Signs in and serves the Bedfordview data. Templates and runs live in memory for the page's lifetime. */
+export async function signInWithBedfordview(
+  page: Page,
+): Promise<{ templates: StoredTemplate[]; runs: StoredRun[] }> {
   const templates: StoredTemplate[] = [];
+  const runs: StoredRun[] = [];
   // supabase-js stores the session under sb-<first label of the host>-auth-token.
   await page.addInitScript(
     (s) => localStorage.setItem('sb-127-auth-token', JSON.stringify(s)),
@@ -128,7 +136,43 @@ export async function signInWithBedfordview(page: Page): Promise<{ templates: St
       }
       return empty(route);
     }
+    if (path.endsWith('/rest/v1/runs')) {
+      if (method === 'POST') {
+        const body = req.postDataJSON() as Record<string, unknown>;
+        const i = runs.findIndex((r) => r.id === body.id);
+        const row = {
+          ...body,
+          id: String(body.id),
+          run_steps: i >= 0 ? runs[i]!.run_steps : [],
+        } as StoredRun;
+        if (i >= 0) runs[i] = row;
+        else runs.push(row);
+        return empty(route, 201);
+      }
+      if (method === 'DELETE') {
+        const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
+        const i = runs.findIndex((r) => r.id === id);
+        if (i >= 0) runs.splice(i, 1);
+        return empty(route);
+      }
+      return json(route, runs);
+    }
+
+    if (path.endsWith('/rest/v1/run_steps')) {
+      if (method === 'POST') {
+        const rows = req.postDataJSON() as Record<string, unknown>[];
+        const r = runs.find((x) => x.id === rows[0]?.run_id);
+        if (r) r.run_steps.push(...rows);
+        return empty(route, 201);
+      }
+      if (method === 'DELETE') {
+        const id = (url.searchParams.get('run_id') ?? '').replace('eq.', '');
+        const r = runs.find((x) => x.id === id);
+        if (r) r.run_steps = [];
+        return empty(route);
+      }
+    }
     return json(route, {});
   });
-  return { templates };
+  return { templates, runs };
 }

@@ -56,6 +56,12 @@ function fakeClient(opts: FakeOptions = {}) {
               limit: vi.fn().mockReturnValue({ maybeSingle: vi.fn(() => ok({ id: 'trainer-1' })) }),
             }),
           };
+        case 'runs':
+          return {
+            select: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({ limit: vi.fn(() => ok([])) }),
+            }),
+          };
         case 'templates':
           return { select: vi.fn().mockReturnValue({ order: vi.fn(() => ok([])) }) };
         default:
