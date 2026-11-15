@@ -6,6 +6,9 @@ import {
   isActive,
   isRunView,
   layoutChanged,
+  blankLayout,
+  cloneLayout,
+  gymTitle as titleOf,
   pdfFileName,
   itemsPerFloor,
   remapItems,
@@ -35,6 +38,8 @@ import { AssignPanel } from './components/clients/AssignPanel.tsx';
 import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { LayoutTab } from './components/LayoutTab.tsx';
+import { GymsTab } from './components/GymsTab.tsx';
+import type { GymMeta, GymsApi } from './data/gymsApi.ts';
 import type { LayoutApi } from './data/layoutApi.ts';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
 import type { ClientsApi, ProfileApi } from './data/clients.ts';
@@ -47,7 +52,7 @@ import type { Template, TemplateApi } from './data/templates.ts';
 import { copyText } from './lib/clipboard.ts';
 import { loadRunInProgress } from './run/runStore.ts';
 import { useRun } from './run/useRun.ts';
-import { newUid } from './session/sessionState.ts';
+import { newUid, saveDraft } from './session/sessionState.ts';
 import { useSession } from './session/useSession.ts';
 
 interface Props {
@@ -62,6 +67,9 @@ interface Props {
   profileApi?: ProfileApi | null;
   shareApi?: ShareApi | null;
   layoutApi?: LayoutApi | null;
+  gymsApi?: GymsApi | null;
+  /** Re-reads the gym list (after one is added, edited or deleted). */
+  onGymsChanged?: () => Promise<void>;
   onSignOut: () => void;
 }
 
@@ -80,6 +88,8 @@ export function Planner({
   profileApi = null,
   shareApi = null,
   layoutApi = null,
+  gymsApi = null,
+  onGymsChanged = async () => {},
   onSignOut,
 }: Props) {
   const [mode, setMode] = useState<Mode>('plan');
@@ -92,6 +102,13 @@ export function Planner({
   const [filter, setFilter] = useState('all');
   const [selZone, setSelZone] = useState<string | null>(null);
   const [selEq, setSelEq] = useState<string | null>(null);
+  const [ask, setAsk] = useState<{
+    id: string;
+    dirty: boolean;
+    moved: number;
+    dropped: number;
+    items: ItemSnap[] | null;
+  } | null>(null);
   const [selStruct, setSelStruct] = useState<string | null>(null);
   // Machines copied by Duplicate zone: their exercise links are copied once the layout is saved.
   const copiesRef = useRef<{ from: string; to: string }[]>([]);
@@ -260,8 +277,8 @@ export function Planner({
     setPart(0);
     setMode(m);
   }
-  async function saveLayout() {
-    if (!draft || !layoutApi || !gym) return;
+  async function saveLayout(): Promise<boolean> {
+    if (!draft || !layoutApi || !gym) return false;
     setSaving(true);
     try {
       await layoutApi.save(gym.id, draft);
@@ -287,8 +304,10 @@ export function Planner({
       setSelStruct(null);
       setReload((n) => n + 1);
       say(linkFailed ? 'Layout saved, but some exercise links could not be copied.' : 'Layout saved.');
+      return true;
     } catch (err) {
       say(`Could not save the layout: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -310,8 +329,96 @@ export function Planner({
       say(`Could not change the link: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  function changeGym(id: string) {
-    if (dirty) return say('Save or discard your layout changes before switching gym.');
+  /** Where the open session's exercises would land at another gym. Nothing happens until the trainer agrees. */
+  async function planSwitch(id: string) {
+    if (!session.items.length) return { items: null, moved: 0, dropped: 0 };
+    const target = await loadGym(id);
+    const candidates = target.layout.equipment.map((e) => ({ id: e.id, name: e.name, type: e.type }));
+    const links = Object.fromEntries(target.library.map((x) => [x.id, x.equipmentIds]));
+    const old = new Map([...equipById].map(([k, e]) => [k, { name: e.name, type: e.type }]));
+    const r = remapItems(snapsOf(session.items), candidates, links, old);
+    return { items: r.items, moved: r.moved, dropped: r.skipped };
+  }
+  async function requestSwitch(id: string, title?: string) {
+    if (id === '__manage') return setTab('gyms');
+    if (id === gym!.id) return setAsk(null);
+    if (runLive) return say('End or reset the live run before changing gym.');
+    try {
+      const plan = await planSwitch(id);
+      if (dirty || plan.dropped)
+        return setAsk({ id, dirty, moved: plan.moved, dropped: plan.dropped, items: plan.items });
+      await doSwitch(id, '', plan.items, title);
+    } catch (err) {
+      say(`Could not open that gym: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  /** Opens a gym. The open routine goes with the trainer, remapped onto the machines of the gym they open. */
+  async function doSwitch(
+    id: string,
+    how: 'save' | 'discard' | '',
+    items: ItemSnap[] | null,
+    title?: string,
+  ) {
+    if (how === 'save' && !(await saveLayout())) return;
+    if (items) saveDraft(id, { ...session, items: items.map((q) => ({ ...q, uid: newUid() })) });
+    const target = gyms.find((g) => g.id === id);
+    setAsk(null);
+    openGym(id);
+    say(`Opened ${title ?? (target ? titleOf(target) : 'the gym')}.`);
+  }
+  function uniqueName(name: string, branch: string): string {
+    const taken = new Set(gyms.map((g) => titleOf(g).toLowerCase()));
+    if (!taken.has(titleOf({ name, branch }).toLowerCase())) return name;
+    let i = 2;
+    while (taken.has(titleOf({ name: `${name} ${i}`, branch }).toLowerCase())) i += 1;
+    return `${name} ${i}`;
+  }
+  /** Makes a gym (blank, or a copy of the plan on screen), saves its layout, and opens it. */
+  async function createGym(meta: GymMeta, start: 'blank' | 'copy') {
+    if (!gymsApi || !layoutApi) return;
+    const copy = start === 'copy' && layout ? cloneLayout(layout, newUid) : null;
+    const lay = copy?.layout ?? blankLayout(newUid());
+    const name = uniqueName(meta.name, meta.branch);
+    const id = await gymsApi.create({ ...meta, name });
+    try {
+      await layoutApi.save(id, lay);
+      await gymsApi.copyLinks(copy?.machines ?? []);
+    } catch (err) {
+      await gymsApi.remove(id).catch(() => {});
+      throw err;
+    }
+    await onGymsChanged();
+    // A copy of what is on screen takes the unsaved edits with it; the gym it came from goes back to as it was saved.
+    if (copy) await doSwitch(id, 'discard', null, titleOf({ name, branch: meta.branch }));
+    else await requestSwitch(id, titleOf({ name, branch: meta.branch }));
+  }
+  async function duplicateGym(id: string): Promise<string | null> {
+    const src = gyms.find((g) => g.id === id);
+    if (!src || !gymsApi || !layoutApi) return null;
+    const data = await loadGym(id);
+    const copy = cloneLayout(data.layout, newUid);
+    const branch = src.branch ? `${src.branch} copy` : '';
+    const name = uniqueName(src.branch ? src.name : `${src.name} copy`, branch);
+    const newId = await gymsApi.create({
+      name,
+      branch,
+      address: src.address,
+      phone: src.phone,
+      notes: src.notes,
+    });
+    try {
+      await layoutApi.save(newId, copy.layout);
+      await gymsApi.copyLinks(copy.machines);
+    } catch (err) {
+      await gymsApi.remove(newId).catch(() => {});
+      throw err;
+    }
+    await onGymsChanged();
+    say(`Duplicated as "${titleOf({ name, branch })}". Open it when you want to edit it.`);
+    return newId;
+  }
+  function openGym(id: string) {
+    copiesRef.current = [];
     setDraft(null);
     setGymId(id);
     setFloorId(null);
@@ -591,8 +698,20 @@ export function Planner({
       <GymBar
         gyms={gyms}
         gymId={gym.id}
-        onChange={changeGym}
+        onChange={(id) => void requestSwitch(id)}
         disabled={runLive}
+        ask={
+          ask
+            ? {
+                target: titleOf(gyms.find((g) => g.id === ask.id) ?? gym),
+                dirty: ask.dirty,
+                moved: ask.moved,
+                dropped: ask.dropped,
+                onGo: (how) => void doSwitch(ask.id, how, ask.items),
+                onCancel: () => setAsk(null),
+              }
+            : null
+        }
         edit={
           editing && layoutApi
             ? { dirty, saving, onSave: () => void saveLayout(), onDiscard: discardLayout }
@@ -825,7 +944,21 @@ export function Planner({
             {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
               <p className="hint">Waiting for the floor plan…</p>
             )}
-            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && tab !== 'clients' && (
+            {tab === 'gyms' && (
+              <GymsTab
+                gyms={gyms}
+                openId={gym.id}
+                dirty={dirty}
+                api={gymsApi}
+                disabled={runLive}
+                onCreate={createGym}
+                onDuplicate={duplicateGym}
+                onOpen={(id) => void requestSwitch(id)}
+                onChanged={onGymsChanged}
+                say={say}
+              />
+            )}
+            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && tab !== 'clients' && tab !== 'gyms' && (
               <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
             )}
           </div>

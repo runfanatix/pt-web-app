@@ -14,3 +14,4 @@ export * from './share.ts';
 export * from './layout-edit.ts';
 export * from './layout-structs.ts';
 export * from './layout-zones.ts';
+export * from './layout-clone.ts';

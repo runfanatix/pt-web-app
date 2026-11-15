@@ -112,6 +112,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** The trainer's gyms (the first is the imported Bedfordview). */
+  gyms: Record<string, unknown>[];
   /** Every layout the app sent to save_gym_layout. */
   layoutSaves: { p_gym_id: string; p_layout: Record<string, unknown[]> }[];
 }
@@ -124,6 +126,7 @@ export function createMockDb(): MockDb {
     dataRequests: [],
     shareLinks: [],
     layoutSaves: [],
+    gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
     profile: {
       business_name: '',
       address: '',
@@ -161,9 +164,60 @@ export async function serveApi(page: Page, db: MockDb): Promise<void> {
     const url = new URL(req.url());
     const path = url.pathname;
 
-    if (path.endsWith('/rest/v1/gyms'))
-      return json(route, [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }]);
-    if (path.endsWith('/rest/v1/floors')) return json(route, floorRowsFromPlan(plan));
+    if (path.endsWith('/rest/v1/gyms')) {
+      const gid = (url.searchParams.get('id') ?? '').replace('eq.', '');
+      if (method === 'POST') {
+        const row = { ...(req.postDataJSON() as Record<string, unknown>), id: `gym-${db.gyms.length + 1}` };
+        db.gyms.push({ updated_at: new Date().toISOString(), ...row });
+        return json(route, { id: row.id });
+      }
+      if (method === 'PATCH') {
+        Object.assign(db.gyms.find((g) => g.id === gid) ?? {}, req.postDataJSON() as Record<string, unknown>);
+        return empty(route);
+      }
+      if (method === 'DELETE') {
+        const i = db.gyms.findIndex((g) => g.id === gid);
+        if (i >= 0) db.gyms.splice(i, 1);
+        return empty(route);
+      }
+      // The Gyms tab counts floors, zones and machines with a nested select.
+      if ((url.searchParams.get('select') ?? '').includes('floors(')) {
+        return json(
+          route,
+          db.gyms.map((g) => ({
+            id: g.id,
+            floors:
+              g.id === plan.gym.id
+                ? floorRowsFromPlan(plan).map((f) => ({
+                    id: f.id,
+                    zones: f.zones.map((z) => ({ id: z.id, equipment: z.equipment })),
+                  }))
+                : [{ id: 'x', zones: [] }],
+          })),
+        );
+      }
+      return json(route, db.gyms);
+    }
+    if (path.endsWith('/rest/v1/exercise_equipment'))
+      return method === 'GET' ? json(route, []) : empty(route);
+    if (path.endsWith('/rest/v1/floors')) {
+      const gid = (url.searchParams.get('gym_id') ?? '').replace('eq.', '');
+      if (gid && gid !== plan.gym.id) {
+        const saved = [...db.layoutSaves].reverse().find((x) => x.p_gym_id === gid);
+        const floors = (saved?.p_layout.floors ?? []) as {
+          id: string;
+          name: string;
+          w: number;
+          h: number;
+          position: number;
+        }[];
+        return json(
+          route,
+          floors.map((f) => ({ ...f, zones: [], structs: [] })),
+        );
+      }
+      return json(route, floorRowsFromPlan(plan));
+    }
     if (path.endsWith('/rest/v1/exercises')) return json(route, exerciseRowsFromPlan(plan));
     if (path.endsWith('/rest/v1/trainers')) {
       if (method === 'PATCH') {
