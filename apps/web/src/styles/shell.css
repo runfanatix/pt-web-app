@@ -390,3 +390,83 @@ code {
   font: inherit;
   text-decoration: underline;
 }
+
+/* calendar */
+.calbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.monthgrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.monthgrid .dow {
+  font: 600 11px var(--f-mono);
+  text-align: center;
+  color: var(--muted);
+}
+.monthgrid .day {
+  position: relative;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.monthgrid .day.out {
+  opacity: 0.45;
+}
+.monthgrid .day.today {
+  border-color: var(--accent);
+}
+.monthgrid .day.sel {
+  background: var(--ink);
+  color: var(--bg);
+}
+.monthgrid .dots {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 11px var(--f-mono);
+  text-align: center;
+}
+.booking {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-start;
+}
+.booking .btime {
+  min-width: 58px;
+  display: grid;
+}
+.booking .txt {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.booking.st-cancelled,
+.booking.st-no_show {
+  opacity: 0.7;
+}
+.booking.st-completed {
+  border-left: 3px solid var(--accent);
+}
+.warn {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+}

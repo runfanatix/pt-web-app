@@ -82,6 +82,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** Booked sessions, as the app reads them. */
+  bookings: Record<string, unknown>[];
   /** Portal invitations and the sign-ins they became (the mock treats the one signed-in user as every invited client). */
   invites: StoredInvite[];
   accounts: StoredAccount[];
@@ -109,6 +111,7 @@ export function createMockDb(plan: ImportPlan): MockDb {
     shareLinks: [],
     invites: [],
     accounts: [],
+    bookings: [],
     layoutSaves: [],
     catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
@@ -644,6 +647,52 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     return json(mine ? programmeJson(db, plan, id) : null);
   }
 
+  if (path.endsWith('/rest/v1/bookings')) {
+    const num = (v: string | null, p: string) => (v?.startsWith(p) ? v.slice(p.length) : null);
+    if (method === 'POST') {
+      for (const r of (Array.isArray(body) ? body : [body]) as Record<string, unknown>[])
+        db.bookings.push({
+          id: `bk-${db.bookings.length + 1}`,
+          status: 'scheduled',
+          client_response: 'pending',
+          cancelled_by: null,
+          series_id: null,
+          ...r,
+        });
+      return empty(201);
+    }
+    const id = eqParam(url, 'id');
+    const series = eqParam(url, 'series_id');
+    const from = num(url.searchParams.getAll('starts_at').find((v) => v.startsWith('gte.')) ?? null, 'gte.');
+    const to = num(url.searchParams.getAll('starts_at').find((v) => v.startsWith('lt.')) ?? null, 'lt.');
+    if (method === 'PATCH') {
+      for (const b of db.bookings) {
+        const hit = id
+          ? b.id === id
+          : series
+            ? b.series_id === series &&
+              (!from || String(b.starts_at) >= from) &&
+              (!eqParam(url, 'status') || b.status === eqParam(url, 'status'))
+            : false;
+        if (hit) Object.assign(b, body as Record<string, unknown>);
+      }
+      return empty();
+    }
+    if (method === 'DELETE') {
+      db.bookings = db.bookings.filter((b) => b.id !== id);
+      return empty();
+    }
+    return json(
+      db.bookings
+        .filter(
+          (b) =>
+            (!from || new Date(String(b.starts_at)).getTime() >= new Date(from).getTime()) &&
+            (!to || new Date(String(b.starts_at)).getTime() < new Date(to).getTime()),
+        )
+        .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at))),
+    );
+  }
+
   const myClient = (clientId: unknown) =>
     clients.find((c) => c.id === clientId && db.accounts.some((a) => a.client_id === c.id && !a.revoked_at));
 
@@ -713,6 +762,46 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     const i = runs.findIndex((r) => r.id === id && r.by_client === true && myClient(r.client_id));
     if (i < 0) return json(false);
     runs.splice(i, 1);
+    return json(true);
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_bookings')) {
+    return json(
+      db.bookings
+        .filter((b) => b.client_id && myClient(b.client_id))
+        .sort((x, y) => String(x.starts_at).localeCompare(String(y.starts_at)))
+        .map((b) => {
+          const g = db.gyms.find((q) => q.id === b.gym_id);
+          return {
+            id: b.id,
+            client_id: b.client_id,
+            title: b.title,
+            starts_at: b.starts_at,
+            ends_at: b.ends_at,
+            status: b.status,
+            client_response: b.client_response,
+            cancelled_by: b.cancelled_by,
+            gym: g ? [g.name, g.branch].filter(Boolean).join(' ') : null,
+            gym_address: g?.address || null,
+            trainer: profile.business_name,
+          };
+        }),
+    );
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_respond_booking')) {
+    const b = body as { p_booking_id: string; p_response: string };
+    const row = db.bookings.find((x) => x.id === b.p_booking_id);
+    if (
+      !row ||
+      !row.client_id ||
+      !myClient(row.client_id) ||
+      !['confirmed', 'declined'].includes(b.p_response)
+    )
+      return json(false);
+    if (row.status !== 'scheduled' || new Date(String(row.starts_at)).getTime() <= Date.now())
+      return json(false);
+    row.client_response = b.p_response;
     return json(true);
   }
 

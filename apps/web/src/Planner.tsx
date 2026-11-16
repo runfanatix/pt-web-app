@@ -42,6 +42,8 @@ import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { LayoutTab } from './components/LayoutTab.tsx';
 import { GymsTab } from './components/GymsTab.tsx';
+import { CalendarTab } from './components/CalendarTab.tsx';
+import type { BookingsApi } from './data/bookings.ts';
 import type { InviteApi } from './data/invites.ts';
 import { CatalogueTab } from './components/CatalogueTab.tsx';
 import { ModelsContext, type CatalogueApi } from './data/catalogueApi.ts';
@@ -73,6 +75,7 @@ interface Props {
   profileApi?: ProfileApi | null;
   shareApi?: ShareApi | null;
   inviteApi?: InviteApi | null;
+  bookingsApi?: BookingsApi | null;
   layoutApi?: LayoutApi | null;
   gymsApi?: GymsApi | null;
   catalogueApi?: CatalogueApi | null;
@@ -96,6 +99,7 @@ export function Planner({
   profileApi = null,
   shareApi = null,
   inviteApi = null,
+  bookingsApi = null,
   layoutApi = null,
   gymsApi = null,
   catalogueApi = null,
@@ -979,6 +983,16 @@ export function Planner({
               {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
                 <p className="hint">Waiting for the floor plan…</p>
               )}
+              {tab === 'calendar' && (
+                <CalendarTab
+                  api={bookingsApi}
+                  clients={clients}
+                  gyms={gyms}
+                  openGymId={gym.id}
+                  trainerName={profile?.businessName ?? ''}
+                  say={say}
+                />
+              )}
               {tab === 'catalogue' && (
                 <CatalogueTab
                   catalogue={catalogue}
@@ -1005,6 +1019,7 @@ export function Planner({
                 tab !== 'session' &&
                 tab !== 'run' &&
                 tab !== 'clients' &&
+                tab !== 'calendar' &&
                 tab !== 'gyms' &&
                 tab !== 'catalogue' && (
                   <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>

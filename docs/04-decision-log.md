@@ -139,3 +139,12 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **The programme decides the gym and the client**, so a client cannot attach a workout to anyone else's record or gym. Saving is idempotent by id, and an id that belongs to someone else's run is refused.
 - **Retention**: each saved workout moves the client's keep-until date out to five years after it, as the trainer's own runs do.
 - **Not built**: progress charts over time, sharing a result with the trainer by message, editing a saved workout.
+
+## Phase 10a decisions (bookings and calendar)
+
+- **Our own calendar, no outside provider yet.** It covers daily, weekly and monthly in-person sessions without a calendar service. A one-way `.ics` export lets trainer and client put sessions in Google, Apple or Outlook. Two-way sync is left until the owner picks a provider (open question 8).
+- **South African time everywhere** (fixed UTC+2); sessions are stored as exact moments, so a session means the same moment on any device.
+- **Clashes warn, they do not block**, because group sessions and overlapping blocks are normal.
+- **A client can confirm or say they cannot make it, not cancel or move.** The trainer stays in control of the diary; "cannot make it" is shown on the session.
+- **Repeating sessions are separate rows linked by a series id**, so one can be changed or cancelled without touching the rest; "cancel this and the rest" cancels from that session on.
+- **Automatic reminders are not built**: they need the email service from Phase 9a. Until then the trainer can send a WhatsApp reminder in one tap.
