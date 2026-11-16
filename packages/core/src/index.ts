@@ -18,3 +18,4 @@ export * from './layout-clone.ts';
 export * from './catalogue.ts';
 export * from './portal.ts';
 export * from './calendar.ts';
+export * from './invoicing.ts';

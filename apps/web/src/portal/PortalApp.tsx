@@ -9,6 +9,10 @@ import {
   type PortalMembership,
   type PortalOverview,
   type PortalBooking,
+  type PortalInvoice,
+  monthLabel,
+  rand,
+  todaySast,
   RESPONSE_LABEL,
   STATUS_LABEL,
   fromIso,
@@ -25,6 +29,8 @@ import { ConfirmButton } from '../components/ConfirmButton.tsx';
 import { ProgrammeView } from '../components/PublicProgramme.tsx';
 import { portalLink } from '../lib/links.ts';
 import { PortalRun } from './PortalRun.tsx';
+import { createPortalInvoicesApi, type PortalInvoicesApi } from '../data/invoices.ts';
+import { pdfModelFromPortal, saveInvoicePdf } from '../lib/invoicePdf.ts';
 import { createPortalBookingsApi, downloadText, type PortalBookingsApi } from '../data/bookings.ts';
 
 /** The brand mark and name: a placeholder until there is a real logo. */
@@ -108,7 +114,114 @@ function PortalSignIn({ client }: { client: SupabaseClient }) {
   );
 }
 
-type Tab = 'programmes' | 'sessions' | 'workouts' | 'privacy';
+type Tab = 'programmes' | 'sessions' | 'invoices' | 'workouts' | 'privacy';
+
+/** The person's invoices: what is owed and how to pay it, and what has been paid. */
+function InvoicesList({
+  api,
+  clientName,
+  say,
+}: {
+  api: PortalInvoicesApi;
+  clientName: string;
+  say: (s: string) => void;
+}) {
+  const [list, setList] = useState<PortalInvoice[] | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    api.list().then(
+      (l) => {
+        setList(l);
+        setError('');
+      },
+      (err: unknown) =>
+        setError(`Could not load your invoices: ${err instanceof Error ? err.message : String(err)}`),
+    );
+  }, [api]);
+  if (error)
+    return (
+      <p role="alert" className="err">
+        {error}
+      </p>
+    );
+  if (!list) return <p className="hint">Loading your invoices…</p>;
+  if (!list.length)
+    return (
+      <section className="card" aria-label="No invoices yet">
+        <h3>No invoices yet</h3>
+        <p className="sub">Your invoices appear here when your trainer sends them.</p>
+      </section>
+    );
+  const today = todaySast();
+  const owing = list.filter((i) => i.status === 'sent');
+  return (
+    <>
+      {owing.length > 0 && (
+        <p role="status">
+          <strong>{`You owe ${rand(owing.reduce((n, i) => n + i.total, 0))}`}</strong>
+          {owing.some((i) => i.dueOn < today) ? ' (some of it is overdue)' : ''}
+        </p>
+      )}
+      <ul className="rows invoices" aria-label="My invoices">
+        {list.map((i) => (
+          <li key={i.id} className={`invoice st-${i.status}`}>
+            <details open={i.status === 'sent'}>
+              <summary>
+                <strong>{`${i.number} · ${monthLabel(i.periodStart)}`}</strong>
+                <span className="sub">
+                  {`${rand(i.total)} · ${i.status === 'paid' ? 'Paid' : i.dueOn < today ? `Overdue, was due ${fmtDate(i.dueOn)}` : `Due ${fmtDate(i.dueOn)}`}`}
+                </span>
+              </summary>
+              <ul className="rows" aria-label={`Lines of ${i.number}`}>
+                {i.lines.map((l, k) => (
+                  <li key={k}>
+                    <span className="txt">
+                      {l.description}
+                      <span className="sub">{`${l.quantity} x ${rand(l.unitCents)} = ${rand(l.amountCents)}`}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {i.vatPercent > 0 && (
+                <p className="sub">{`Subtotal ${rand(i.subtotal)} + VAT ${i.vatPercent}% ${rand(i.vat)}`}</p>
+              )}
+              {i.status === 'sent' && (
+                <div className="stack">
+                  <h4>How to pay</h4>
+                  {i.pay.bankDetails && (
+                    <pre className="paybox">{`${i.pay.bankDetails}\nReference: ${i.number}`}</pre>
+                  )}
+                  {i.pay.paymentLink && (
+                    <a className="btn primary" href={i.pay.paymentLink} target="_blank" rel="noreferrer">
+                      Pay online
+                    </a>
+                  )}
+                  {!i.pay.bankDetails && !i.pay.paymentLink && (
+                    <p className="sub">
+                      Ask {i.trainerName || 'your trainer'} how they would like to be paid.
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="btnrow">
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={() => {
+                    saveInvoicePdf(pdfModelFromPortal(i, clientName));
+                    say('Invoice saved as a PDF.');
+                  }}
+                >
+                  Save as PDF
+                </button>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 /** The person's booked sessions: what is coming up (confirm or say you cannot come) and what has been. */
 function SessionsList({ api, say }: { api: PortalBookingsApi; say: (s: string) => void }) {
@@ -432,6 +545,7 @@ function PortalHome({ client }: { client: SupabaseClient }) {
   const { session, signOut } = useAuth();
   const api = useMemo(() => createPortalApi(client), [client]);
   const bookingsApi = useMemo(() => createPortalBookingsApi(client), [client]);
+  const invoicesApi = useMemo(() => createPortalInvoicesApi(client), [client]);
   const [overview, setOverview] = useState<PortalOverview | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('programmes');
@@ -540,6 +654,7 @@ function PortalHome({ client }: { client: SupabaseClient }) {
               [
                 ['programmes', 'My programmes'],
                 ['sessions', 'My sessions'],
+                ['invoices', 'My invoices'],
                 ['workouts', 'My workouts'],
                 ['privacy', 'My privacy'],
               ] as const
@@ -560,6 +675,13 @@ function PortalHome({ client }: { client: SupabaseClient }) {
           <main className="stack">
             {tab === 'workouts' && <WorkoutsList api={api} say={setMsg} refreshKey={historyKey} />}
             {tab === 'sessions' && <SessionsList api={bookingsApi} say={setMsg} />}
+            {tab === 'invoices' && (
+              <InvoicesList
+                api={invoicesApi}
+                clientName={overview.memberships[0]?.clientName ?? ''}
+                say={setMsg}
+              />
+            )}
             {(tab === 'programmes' || tab === 'privacy') &&
               overview.memberships.map((m) =>
                 tab === 'programmes' ? (

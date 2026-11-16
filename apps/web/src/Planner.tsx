@@ -43,6 +43,8 @@ import { ZonesTab } from './components/ZonesTab.tsx';
 import { LayoutTab } from './components/LayoutTab.tsx';
 import { GymsTab } from './components/GymsTab.tsx';
 import { CalendarTab } from './components/CalendarTab.tsx';
+import { InvoicesTab } from './components/InvoicesTab.tsx';
+import type { InvoicesApi } from './data/invoices.ts';
 import type { BookingsApi } from './data/bookings.ts';
 import type { InviteApi } from './data/invites.ts';
 import { CatalogueTab } from './components/CatalogueTab.tsx';
@@ -76,6 +78,7 @@ interface Props {
   shareApi?: ShareApi | null;
   inviteApi?: InviteApi | null;
   bookingsApi?: BookingsApi | null;
+  invoicesApi?: InvoicesApi | null;
   layoutApi?: LayoutApi | null;
   gymsApi?: GymsApi | null;
   catalogueApi?: CatalogueApi | null;
@@ -100,6 +103,7 @@ export function Planner({
   shareApi = null,
   inviteApi = null,
   bookingsApi = null,
+  invoicesApi = null,
   layoutApi = null,
   gymsApi = null,
   catalogueApi = null,
@@ -983,6 +987,7 @@ export function Planner({
               {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
                 <p className="hint">Waiting for the floor plan…</p>
               )}
+              {tab === 'invoices' && <InvoicesTab api={invoicesApi} clients={clients} say={say} />}
               {tab === 'calendar' && (
                 <CalendarTab
                   api={bookingsApi}
@@ -1020,6 +1025,7 @@ export function Planner({
                 tab !== 'run' &&
                 tab !== 'clients' &&
                 tab !== 'calendar' &&
+                tab !== 'invoices' &&
                 tab !== 'gyms' &&
                 tab !== 'catalogue' && (
                   <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>

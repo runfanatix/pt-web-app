@@ -107,13 +107,13 @@ async function addFrom(container: HTMLElement, eid: string, index = 0) {
 beforeEach(() => localStorage.clear());
 
 describe('Planner shell', () => {
-  it('shows the title from the gym, the gym bar and all nine tabs', async () => {
+  it('shows the title from the gym, the gym bar and all ten tabs', async () => {
     mount();
     await ready();
     expect(screen.getByRole('heading', { level: 1, name: 'Bedfordview Zone Planner' })).toBeInTheDocument();
     expect(screen.getByText('Virgin Active Bedfordview · 101 Van Buuren Rd')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Gym location' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab')).toHaveLength(9);
+    expect(screen.getAllByRole('tab')).toHaveLength(10);
     expect(screen.getByRole('tab', { name: 'Session (0)' })).toBeInTheDocument();
   });
 

@@ -148,3 +148,14 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **A client can confirm or say they cannot make it, not cancel or move.** The trainer stays in control of the diary; "cannot make it" is shown on the session.
 - **Repeating sessions are separate rows linked by a series id**, so one can be changed or cancelled without touching the rest; "cancel this and the rest" cancels from that session on.
 - **Automatic reminders are not built**: they need the email service from Phase 9a. Until then the trainer can send a WhatsApp reminder in one tap.
+
+## Phase 11a decisions (invoicing)
+
+- **Owner's brief (2026-11-23):** clients are billed monthly; invoices are made automatically near the end of the previous month, from the sessions booked in the calendar, so clients pay in advance for the coming month.
+- **The invoice counts sessions at a per-session rate** (a rate per client, else a default). Cancelled and missed sessions are not charged. The trainer can edit a draft's lines before it goes out (discounts, extra items).
+- **Made in the database, not the app**, so the button and the scheduled job give exactly the same answer and nothing is made twice. Dates are South African dates (a 00:30 session on the 1st belongs to that month).
+- **Automatic means drafts by default.** Sending without checking is a separate tick, because a wrong invoice sent automatically is hard to take back.
+- **No online payment yet.** Invoices carry bank details (with the invoice number as the reference) and an optional payment link, and the trainer marks them paid. Taking card or instant EFT needs a payment provider (open question 8) and its terms; the payment link field lets the trainer use a provider's hosted page in the meantime.
+- **VAT is a single percentage on the subtotal** (0 by default, since many trainers are not VAT-registered). A proper tax invoice with VAT numbers is not built.
+- **Invoices outlive the client**: erasing a client keeps their invoices for tax records, with the name and email as they were.
+- **Money is whole cents** everywhere; amounts show in South African style (R1 800,00).
