@@ -18,6 +18,7 @@ import { supabase as defaultClient } from './lib/supabase.ts';
 import { currentPath, isPortalPath, portalLink } from './lib/links.ts';
 import { PortalApp } from './portal/PortalApp.tsx';
 import { createInviteApi, type InviteApi } from './data/invites.ts';
+import { createBookingsApi, type BookingsApi } from './data/bookings.ts';
 
 function SetupNotice() {
   return (
@@ -55,6 +56,7 @@ function SignedIn() {
   const [gymsApi, setGymsApi] = useState<GymsApi | null>(null);
   const [catalogueApi, setCatalogueApi] = useState<CatalogueApi | null>(null);
   const [inviteApi, setInviteApi] = useState<InviteApi | null>(null);
+  const [bookingsApi, setBookingsApi] = useState<BookingsApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -67,6 +69,7 @@ function SignedIn() {
         setGymsApi(createGymsApi(client, id));
         setCatalogueApi(createCatalogueApi(client, id));
         setInviteApi(createInviteApi(client, id));
+        setBookingsApi(createBookingsApi(client, id));
       },
       (err: unknown) => {
         if (!active) return;
@@ -80,6 +83,7 @@ function SignedIn() {
         setGymsApi(null);
         setCatalogueApi(null);
         setInviteApi(null);
+        setBookingsApi(null);
       },
     );
     return () => {
@@ -101,6 +105,7 @@ function SignedIn() {
       gymsApi={gymsApi}
       catalogueApi={catalogueApi}
       inviteApi={inviteApi}
+      bookingsApi={bookingsApi}
       onGymsChanged={state.refresh}
       onSignOut={() => void signOut()}
     />

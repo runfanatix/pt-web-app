@@ -8,6 +8,13 @@ import {
   isCoreConsent,
   type PortalMembership,
   type PortalOverview,
+  type PortalBooking,
+  RESPONSE_LABEL,
+  STATUS_LABEL,
+  fromIso,
+  longDate,
+  timeRange,
+  toIcs,
   type PortalWorkout,
   type SharedProgramme,
   fmtClock,
@@ -18,6 +25,7 @@ import { ConfirmButton } from '../components/ConfirmButton.tsx';
 import { ProgrammeView } from '../components/PublicProgramme.tsx';
 import { portalLink } from '../lib/links.ts';
 import { PortalRun } from './PortalRun.tsx';
+import { createPortalBookingsApi, downloadText, type PortalBookingsApi } from '../data/bookings.ts';
 
 /** The brand mark and name: a placeholder until there is a real logo. */
 function Brand() {
@@ -100,7 +108,136 @@ function PortalSignIn({ client }: { client: SupabaseClient }) {
   );
 }
 
-type Tab = 'programmes' | 'workouts' | 'privacy';
+type Tab = 'programmes' | 'sessions' | 'workouts' | 'privacy';
+
+/** The person's booked sessions: what is coming up (confirm or say you cannot come) and what has been. */
+function SessionsList({ api, say }: { api: PortalBookingsApi; say: (s: string) => void }) {
+  const [list, setList] = useState<PortalBooking[] | null>(null);
+  const [error, setError] = useState('');
+  async function load() {
+    try {
+      setList(await api.list());
+      setError('');
+    } catch (err) {
+      setError(`Could not load your sessions: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+  if (error)
+    return (
+      <p role="alert" className="err">
+        {error}
+      </p>
+    );
+  if (!list) return <p className="hint">Loading your sessions…</p>;
+  const now = Date.now();
+  const coming = list.filter((b) => b.status === 'scheduled' && Date.parse(b.endsAt) > now);
+  const earlier = list.filter((b) => !coming.includes(b)).reverse();
+  const when = (b: PortalBooking) => `${longDate(fromIso(b.startsAt).date)}, ${timeRange(b)}`;
+  const where = (b: PortalBooking) => [b.gym, b.gymAddress].filter(Boolean).join(', ');
+  async function respond(b: PortalBooking, r: 'confirmed' | 'declined') {
+    try {
+      const ok = await api.respond(b.id, r);
+      await load();
+      say(
+        ok
+          ? r === 'confirmed'
+            ? 'Thanks, your trainer knows you will be there.'
+            : 'Your trainer has been told you cannot make it.'
+          : 'That session can no longer be changed.',
+      );
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err));
+    }
+  }
+  return (
+    <>
+      <section className="card" aria-label="Coming up">
+        <h3>Coming up</h3>
+        {coming.length ? (
+          <ul className="rows" aria-label="Upcoming sessions">
+            {coming.map((b) => (
+              <li key={b.id}>
+                <div className="txt">
+                  <strong>{when(b)}</strong>
+                  <span className="sub">
+                    {[b.title, b.trainerName, where(b)].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="chipst">{RESPONSE_LABEL[b.response]}</span>
+                </div>
+                <div className="btnrow">
+                  <button
+                    type="button"
+                    className="btn sm primary"
+                    aria-label={`Confirm ${b.title} on ${longDate(fromIso(b.startsAt).date)}`}
+                    disabled={b.response === 'confirmed'}
+                    onClick={() => void respond(b, 'confirmed')}
+                  >
+                    I will be there
+                  </button>
+                  <button
+                    type="button"
+                    className="btn sm"
+                    aria-label={`Cannot make ${b.title} on ${longDate(fromIso(b.startsAt).date)}`}
+                    disabled={b.response === 'declined'}
+                    onClick={() => void respond(b, 'declined')}
+                  >
+                    I cannot make it
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="sub">No sessions booked yet.</p>
+        )}
+        {coming.length > 0 && (
+          <button
+            type="button"
+            className="btn sm"
+            onClick={() => {
+              downloadText(
+                'my-sessions.ics',
+                toIcs(
+                  coming.map((b) => ({
+                    id: b.id,
+                    title: `${b.title}${b.trainerName ? ` with ${b.trainerName}` : ''}`,
+                    startsAt: b.startsAt,
+                    endsAt: b.endsAt,
+                    location: where(b),
+                  })),
+                ),
+              );
+              say('Calendar file saved. Open it to add the sessions to your calendar.');
+            }}
+          >
+            Add these to my calendar
+          </button>
+        )}
+      </section>
+      {earlier.length > 0 && (
+        <section className="card" aria-label="Earlier sessions">
+          <h3>Earlier</h3>
+          <ul className="rows" aria-label="Earlier sessions">
+            {earlier.map((b) => (
+              <li key={b.id}>
+                <div className="txt">
+                  <span>{when(b)}</span>
+                  <span className="sub">
+                    {`${b.title} · ${b.status === 'scheduled' ? 'Past' : STATUS_LABEL[b.status]}${b.status === 'cancelled' && b.cancelledBy ? ` by ${b.cancelledBy === 'client' ? 'you' : 'your trainer'}` : ''}`}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
 
 /** The person's finished workouts: the ones they did themselves (they can delete these) and their trainer's records. */
 function WorkoutsList({
@@ -294,6 +431,7 @@ function ContactLine({ m }: { m: PortalMembership }) {
 function PortalHome({ client }: { client: SupabaseClient }) {
   const { session, signOut } = useAuth();
   const api = useMemo(() => createPortalApi(client), [client]);
+  const bookingsApi = useMemo(() => createPortalBookingsApi(client), [client]);
   const [overview, setOverview] = useState<PortalOverview | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('programmes');
@@ -401,6 +539,7 @@ function PortalHome({ client }: { client: SupabaseClient }) {
             {(
               [
                 ['programmes', 'My programmes'],
+                ['sessions', 'My sessions'],
                 ['workouts', 'My workouts'],
                 ['privacy', 'My privacy'],
               ] as const
@@ -420,7 +559,8 @@ function PortalHome({ client }: { client: SupabaseClient }) {
 
           <main className="stack">
             {tab === 'workouts' && <WorkoutsList api={api} say={setMsg} refreshKey={historyKey} />}
-            {tab !== 'workouts' &&
+            {tab === 'sessions' && <SessionsList api={bookingsApi} say={setMsg} />}
+            {(tab === 'programmes' || tab === 'privacy') &&
               overview.memberships.map((m) =>
                 tab === 'programmes' ? (
                   <section key={m.clientId} className="card" aria-label={`Programmes from ${m.trainerName}`}>

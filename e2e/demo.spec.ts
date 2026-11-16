@@ -189,3 +189,43 @@ test('client portal: invite a client, then open the client view and see only the
   await client.getByRole('button', { name: 'Start workout' }).click();
   await expect(client.getByRole('region', { name: 'Live workout' })).toBeVisible();
 });
+
+test('calendar: book a weekly session, then the client sees it under My sessions', async ({
+  page,
+  context,
+}) => {
+  await page.getByRole('tab', { name: 'Clients' }).click();
+  await page.getByRole('button', { name: 'Your business details' }).click();
+  await page.getByLabel('Business or trainer name').fill('Demo Fitness');
+  await page.getByLabel('Physical address').fill('1 Main Rd');
+  await page.getByLabel('Contact email').fill('demo@example.com');
+  await page.getByLabel('Information Officer name').fill('Demo Officer');
+  await page.getByLabel('Information Officer email').fill('io@example.com');
+  await page.getByRole('button', { name: 'Save details' }).click();
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await page.getByRole('button', { name: 'Add client' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Sample Client');
+  await page.getByRole('button', { name: 'Continue to consent' }).click();
+  for (let i = 0; i < 3; i++) await tick(page);
+  await tick(page, false);
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await page.getByRole('button', { name: /Sample Client/ }).click();
+  const panel = page.getByRole('region', { name: 'Client portal' });
+  await panel.getByLabel('Their email address').fill('client@example.com');
+  await panel.getByRole('button', { name: 'Invite to the portal' }).click();
+  await expect(panel.getByText(/Invited: waiting/)).toBeVisible();
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await page.getByRole('button', { name: 'Book a session' }).first().click();
+  const form = page.getByRole('region', { name: 'Book a session' });
+  await form.getByLabel('Client').selectOption({ label: 'Sample Client' });
+  const ahead = new Date(Date.now() + 2 * 86400000 + 2 * 3600000).toISOString().slice(0, 10);
+  await form.getByLabel('Date').fill(ahead);
+  await form.getByLabel('Repeat every week for').selectOption({ value: '4' });
+  await form.getByRole('button', { name: 'Book it' }).click();
+  await expect(page.getByText('4 weekly sessions booked.')).toBeVisible();
+
+  const client = await context.newPage();
+  await client.goto(URL_ + '#/portal');
+  await client.getByRole('tab', { name: 'My sessions' }).click();
+  await expect(client.getByRole('list', { name: 'Upcoming sessions' }).getByRole('listitem')).toHaveCount(4);
+});
