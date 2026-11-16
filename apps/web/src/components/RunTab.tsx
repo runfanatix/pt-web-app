@@ -12,6 +12,7 @@ import {
 } from '@pt/core';
 import type { Template, TemplateApi } from '../data/templates.ts';
 import { ConfirmButton } from './ConfirmButton.tsx';
+import { ModelLine } from './ModelLine.tsx';
 
 type Equip = Layout['equipment'][number];
 
@@ -98,6 +99,7 @@ export function RunTab({
                   <span className="num">{i + 1}</span>
                   <div className="txt">
                     <strong>{e ? e.name : 'Removed equipment'}</strong>
+                    {e && <ModelLine equipment={e} />}
                     <span className="sub">{`${it.exercise} · ${it.sets} x ${it.reps}`}</span>
                     <span className="chipst">
                       {ss === 'now'

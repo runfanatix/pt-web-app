@@ -13,7 +13,7 @@ import { LayoutSchema, type Layout } from './schemas.ts';
 export const FLOORS_SELECT =
   'id, name, w, h, position,' +
   ' zones(id, name, category, x, y, w, h, zone_parts(x, y, w, h, position),' +
-  '   equipment(id, name, type, x, y, muscles, notes, exercise_equipment(exercise_id))),' +
+  '   equipment(id, name, type, x, y, muscles, notes, catalogue_item_id, exercise_equipment(exercise_id))),' +
   ' structs(id, type, x, y, w, h, x2, y2, rotation, label, shared)';
 
 // Postgres `numeric` can arrive as a number or a string depending on the client, so coerce.
@@ -28,6 +28,7 @@ const EquipmentRowSchema = z.object({
   y: n,
   muscles: z.array(z.string()),
   notes: z.string(),
+  catalogue_item_id: z.string().nullable().optional(),
   exercise_equipment: z.array(z.object({ exercise_id: z.string() })).default([]),
 });
 const PartRowSchema = z.object({ x: n, y: n, w: n, h: n, position: z.number() });
@@ -123,6 +124,7 @@ export function layoutFromFloorRows(input: unknown): Layout {
           muscles: e.muscles,
           notes: e.notes,
           floor: f.id,
+          catalogueId: e.catalogue_item_id ?? null,
         })),
       ),
     ),

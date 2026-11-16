@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LEVEL_NAMES, rxText, type Layout, type LibraryExercise } from '@pt/core';
 import { TYPE_LETTERS } from './FloorPlan.tsx';
+import { ModelLine } from './ModelLine.tsx';
 
 type Equip = Layout['equipment'][number];
 
@@ -71,6 +72,7 @@ export function MachinePopup({ equipment, place, exercises, inSession, onAdd, on
         <span className="dot">{letter}</span>
         <div className="t">
           <strong>{equipment.name}</strong>
+          <ModelLine equipment={equipment} />
           <span className="sub">
             {place} · {exercises.length} exercise{exercises.length === 1 ? '' : 's'}
           </span>

@@ -1,4 +1,12 @@
-import { estimateSeconds, type ItemSnap, type Layout, type LibraryExercise, type ShareModel } from '@pt/core';
+import {
+  estimateSeconds,
+  machineTitle,
+  type ModelEntry,
+  type ItemSnap,
+  type Layout,
+  type LibraryExercise,
+  type ShareModel,
+} from '@pt/core';
 import type { PdfModel } from './pdf.ts';
 
 interface Input {
@@ -16,6 +24,8 @@ interface Input {
    */
   layout: Layout | null;
   library?: LibraryExercise[];
+  /** Catalogue models by id: machines then read "Chest press · Technogym Selection Chest Press". */
+  models?: Map<string, ModelEntry>;
 }
 
 /** One description of a routine, used for the text message, the email and the PDF. Contains nothing private. */
@@ -31,7 +41,7 @@ export function buildShare(i: Input): { model: ShareModel; pdf: PdfModel } {
     return {
       eid: e ? e.id : '',
       exercise: it.exercise,
-      machine: e ? e.name : '',
+      machine: e ? machineTitle(e.name, e.catalogueId ? i.models?.get(e.catalogueId) : undefined) : '',
       zone: e ? (multi ? `${floorName.get(e.floor) ?? ''} · ` : '') + (zoneName.get(e.zone) ?? '') : '',
       sets: it.sets,
       reps: it.reps,

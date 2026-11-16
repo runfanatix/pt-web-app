@@ -13,6 +13,7 @@ import {
 } from '@pt/core';
 import type { Action } from '../session/sessionState.ts';
 import { ITEM_NOTES, NOTE_PRESETS, REPS_OPTIONS } from '../session/presets.ts';
+import { ModelLine } from './ModelLine.tsx';
 import { ConfirmButton } from './ConfirmButton.tsx';
 
 type Equip = Layout['equipment'][number];
@@ -167,6 +168,7 @@ export function SessionTab({ meta, items, layout, library, dispatch, clients = [
                     <span className="num">{i + 1}</span>
                     <div className="who">
                       <strong>{e ? e.name : 'Removed equipment'}</strong>
+                      {e && <ModelLine equipment={e} />}
                       <span className="sub">{e ? place(e) : ''}</span>
                     </div>
                     <div className="mv">

@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
 import { AuthScreen } from './auth/AuthScreen.tsx';
 import { useGyms } from './data/useGym.ts';
 import { createGymsApi, type GymsApi } from './data/gymsApi.ts';
+import { createCatalogueApi, type CatalogueApi } from './data/catalogueApi.ts';
 import { createLayoutApi } from './data/layoutApi.ts';
 import { createGymDataLoader } from './data/useLayout.ts';
 import { createTemplateApi, fetchTrainerId, type TemplateApi } from './data/templates.ts';
@@ -14,6 +15,7 @@ import { createShareApi } from './data/share.ts';
 import { PublicProgramme } from './components/PublicProgramme.tsx';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
+import { currentPath } from './lib/links.ts';
 
 function SetupNotice() {
   return (
@@ -49,6 +51,7 @@ function SignedIn() {
   const [clientsApi, setClientsApi] = useState<ClientsApi | null>(null);
   const [profileApi, setProfileApi] = useState<ProfileApi | null>(null);
   const [gymsApi, setGymsApi] = useState<GymsApi | null>(null);
+  const [catalogueApi, setCatalogueApi] = useState<CatalogueApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -59,6 +62,7 @@ function SignedIn() {
         setClientsApi(createClientsApi(client, id));
         setProfileApi(createProfileApi(client, id));
         setGymsApi(createGymsApi(client, id));
+        setCatalogueApi(createCatalogueApi(client, id));
       },
       () => {
         if (!active) return;
@@ -67,6 +71,7 @@ function SignedIn() {
         setClientsApi(null);
         setProfileApi(null);
         setGymsApi(null);
+        setCatalogueApi(null);
       },
     );
     return () => {
@@ -86,6 +91,7 @@ function SignedIn() {
       shareApi={shareApi}
       layoutApi={layoutApi}
       gymsApi={gymsApi}
+      catalogueApi={catalogueApi}
       onGymsChanged={state.refresh}
       onSignOut={() => void signOut()}
     />
@@ -103,7 +109,7 @@ function Gate() {
  */
 export function App({
   client = defaultClient,
-  pathname = window.location.pathname,
+  pathname = currentPath(),
 }: {
   client?: SupabaseClient | null;
   pathname?: string;

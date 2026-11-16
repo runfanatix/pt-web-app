@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildHistoryEntry,
   exercisesFor,
@@ -7,6 +7,9 @@ import {
   isRunView,
   layoutChanged,
   blankLayout,
+  catalogueIndex,
+  emptyCatalogue,
+  type Catalogue,
   cloneLayout,
   gymTitle as titleOf,
   pdfFileName,
@@ -39,6 +42,8 @@ import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { LayoutTab } from './components/LayoutTab.tsx';
 import { GymsTab } from './components/GymsTab.tsx';
+import { CatalogueTab } from './components/CatalogueTab.tsx';
+import { ModelsContext, type CatalogueApi } from './data/catalogueApi.ts';
 import type { GymMeta, GymsApi } from './data/gymsApi.ts';
 import type { LayoutApi } from './data/layoutApi.ts';
 import { useGymData, type GymDataLoader } from './data/useLayout.ts';
@@ -68,6 +73,7 @@ interface Props {
   shareApi?: ShareApi | null;
   layoutApi?: LayoutApi | null;
   gymsApi?: GymsApi | null;
+  catalogueApi?: CatalogueApi | null;
   /** Re-reads the gym list (after one is added, edited or deleted). */
   onGymsChanged?: () => Promise<void>;
   onSignOut: () => void;
@@ -89,6 +95,7 @@ export function Planner({
   shareApi = null,
   layoutApi = null,
   gymsApi = null,
+  catalogueApi = null,
   onGymsChanged = async () => {},
   onSignOut,
 }: Props) {
@@ -109,6 +116,8 @@ export function Planner({
     dropped: number;
     items: ItemSnap[] | null;
   } | null>(null);
+  const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
+  const [catalogueError, setCatalogueError] = useState('');
   const [selStruct, setSelStruct] = useState<string | null>(null);
   // Machines copied by Duplicate zone: their exercise links are copied once the layout is saved.
   const copiesRef = useRef<{ from: string; to: string }[]>([]);
@@ -208,6 +217,22 @@ export function Planner({
       live = false;
     };
   }, [profileApi]);
+
+  // The equipment catalogue (manufacturers and models), for tagging machines with what they really are.
+  const refreshCatalogue = async () => {
+    if (!catalogueApi) return;
+    try {
+      setCatalogue(await catalogueApi.load());
+      setCatalogueError('');
+    } catch (err) {
+      setCatalogueError(`Could not load the catalogue: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  useEffect(() => {
+    void refreshCatalogue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogueApi]);
+  const models = useMemo(() => catalogueIndex(catalogue ?? emptyCatalogue()), [catalogue]);
 
   // Keep the sticky planner panel clear of the run bar.
   useEffect(() => {
@@ -647,347 +672,367 @@ export function Planner({
   const showHud = showRun && session.items.length > 0;
 
   return (
-    <div className="wrap">
-      <header className="top">
-        <div>
-          <p className="eyebrow">{[gymTitle, gym.address].filter(Boolean).join(' · ')}</p>
-          <h1>{gym.branch || gym.name} Zone Planner</h1>
-          <p className="lede">
-            Click a machine on the plan, pick an exercise from its pop-up, and it lands in your session.
-          </p>
-        </div>
-        <div className="topright">
-          <div className="seg" role="group" aria-label="Mode">
-            <button type="button" aria-pressed={mode === 'plan'} onClick={() => chooseMode('plan')}>
-              Plan session
-            </button>
-            <button type="button" aria-pressed={mode === 'edit'} onClick={() => chooseMode('edit')}>
-              Edit layout
-            </button>
+    <ModelsContext.Provider value={models}>
+      <div className="wrap">
+        <header className="top">
+          <div>
+            <p className="eyebrow">{[gymTitle, gym.address].filter(Boolean).join(' · ')}</p>
+            <h1>{gym.branch || gym.name} Zone Planner</h1>
+            <p className="lede">
+              Click a machine on the plan, pick an exercise from its pop-up, and it lands in your session.
+            </p>
           </div>
-          <button type="button" className="btn sm" onClick={onSignOut}>
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      {showHud && layout && (
-        <div ref={hudRef}>
-          <RunHud
-            run={run}
-            items={session.items}
-            equipById={equipById}
-            title={session.meta.title}
-            client={session.meta.client}
-            onStart={startRun}
-            onPause={rc.pause}
-            onResume={rc.resume}
-            onBack={rc.back}
-            onNext={nextStep}
-            onCompleteSet={rc.completeSet}
-            onSkipRest={rc.skipRest}
-            onCopyLog={() => void copyLog()}
-            onReset={resetRun}
-          />
-        </div>
-      )}
-      <p className="sr" role="status" aria-live="polite">
-        {announce}
-      </p>
-
-      <GymBar
-        gyms={gyms}
-        gymId={gym.id}
-        onChange={(id) => void requestSwitch(id)}
-        disabled={runLive}
-        ask={
-          ask
-            ? {
-                target: titleOf(gyms.find((g) => g.id === ask.id) ?? gym),
-                dirty: ask.dirty,
-                moved: ask.moved,
-                dropped: ask.dropped,
-                onGo: (how) => void doSwitch(ask.id, how, ask.items),
-                onCancel: () => setAsk(null),
-              }
-            : null
-        }
-        edit={
-          editing && layoutApi
-            ? { dirty, saving, onSave: () => void saveLayout(), onDiscard: discardLayout }
-            : null
-        }
-      />
-
-      <main className="grid">
-        <section className="mapcol" aria-label="Gym floor map">
-          {layout && activeFloor && (
-            <>
-              <FloorTabs
-                floors={layout.floors}
-                floorId={activeFloor.id}
-                counts={itemsPerFloor(session.items, equipById)}
-                onChange={changeFloor}
-              />
-              <MuscleChips filter={filter} onChange={setFilter} />
-            </>
-          )}
-          <div className="mapscroll">
-            {gymState.status === 'loading' && <div className="map-placeholder">Loading the floor plan…</div>}
-            {gymState.status === 'error' && (
-              <div className="map-placeholder" role="alert">
-                {`Could not load the floor plan: ${gymState.message}`}
-              </div>
-            )}
-            {layout && activeFloor && (
-              <FloorPlan
-                layout={layout}
-                floorId={activeFloor.id}
-                filter={filter}
-                selZone={selZone}
-                selEq={selEq}
-                items={editing ? undefined : session.items}
-                run={showRun && !editing ? run : null}
-                onSelectZone={(id) => {
-                  setSelZone(id);
-                  setSelStruct(null);
-                  setPart(0);
-                }}
-                onSelectEq={(id) => {
-                  setSelStruct(null);
-                  selectMachine(id);
-                }}
-                edit={
-                  editing
-                    ? {
-                        snap: snapOn,
-                        part,
-                        selStruct,
-                        onSelectStruct: (id) => {
-                          setSelStruct(id);
-                          setSelZone(null);
-                          setSelEq(null);
-                        },
-                        onLayout: setDraft,
-                      }
-                    : null
-                }
-              />
-            )}
-          </div>
-          <Legend run={showRun} />
-          <p className="hint">{hint}</p>
-        </section>
-        <aside className="panel" aria-label="Planner panel">
-          <div className="tabs" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                id={`tab-${t.id}`}
-                aria-selected={tab === t.id}
-                aria-controls="panelBody"
-                onClick={() => setTab(t.id)}
-              >
-                {t.id === 'zone' && mode === 'edit' ? 'Layout' : t.label}
-                {t.id === 'session' ? ` (${session.items.length})` : ''}
-                {t.id === 'run' && runLive ? ' ●' : ''}
+          <div className="topright">
+            <div className="seg" role="group" aria-label="Mode">
+              <button type="button" aria-pressed={mode === 'plan'} onClick={() => chooseMode('plan')}>
+                Plan session
               </button>
-            ))}
-          </div>
-          <div id="panelBody" role="tabpanel" aria-labelledby={`tab-${tab}`} className="panel-body">
-            {tab === 'zone' && editing && layout && activeFloor && (
-              <LayoutTab
-                layout={layout}
-                floorId={activeFloor.id}
-                snap={snapOn}
-                onSnap={setSnapOn}
-                selZone={selZone}
-                selEq={selEq}
-                part={part}
-                onPart={setPart}
-                onSelectZone={(id) => {
-                  setSelZone(id);
-                  if (id) setSelStruct(null);
-                }}
-                onSelectEq={(id) => {
-                  setSelEq(id);
-                  if (id) setSelStruct(null);
-                }}
-                selStruct={selStruct}
-                onSelectStruct={(id) => {
-                  setSelStruct(id);
-                  if (id) {
-                    setSelZone(null);
-                    setSelEq(null);
-                  }
-                }}
-                onGoToFloor={(id) => setFloorId(id)}
-                onCopies={(c) => {
-                  copiesRef.current = [...copiesRef.current, ...c];
-                }}
-                onChange={setDraft}
-                library={library}
-                savedEquipment={new Set((savedLayout?.equipment ?? []).map((e) => e.id))}
-                onLink={(x, e, on) => void linkExercise(x, e, on)}
-                say={say}
-              />
-            )}
-            {tab === 'zone' && !editing && layout && activeFloor && (
-              <ZonesTab
-                layout={layout}
-                library={library}
-                floorId={activeFloor.id}
-                selEq={selEq}
-                onSelectEq={setSelEq}
-                onAdd={addExercise}
-              />
-            )}
-            {tab === 'session' && layout && (
-              <SessionTab
-                meta={session.meta}
-                items={session.items}
-                layout={layout}
-                library={library}
-                dispatch={dispatch}
-                clients={clients ?? []}
-              >
-                {clientsApi && clients ? (
-                  <AssignPanel
-                    clients={clients}
-                    items={session.items}
-                    title={session.meta.title}
-                    notes={session.meta.notes}
-                    gymId={gym.id}
-                    api={clientsApi}
-                    selectedId={session.meta.clientId}
-                    onAssigned={refreshClients}
-                  />
-                ) : null}
-                {session.items.length > 0 && (
-                  <section className="share" aria-label="Send to your client">
-                    <h3>Send to your client</h3>
-                    <SendActions
-                      key={session.meta.clientId}
-                      pdf={
-                        buildShare({
-                          title: session.meta.title,
-                          client: session.meta.client,
-                          coach: session.meta.coach,
-                          date: session.meta.date,
-                          notes: session.meta.notes,
-                          gym: gymLine,
-                          items: snapsOf(session.items),
-                          layout,
-                          library,
-                        }).pdf
-                      }
-                      whatsapp={sending?.whatsapp ?? ''}
-                      email={sending?.email ?? ''}
-                    />
-                    <p className="sub">
-                      To send a link the client opens on their phone, assign the programme to them and share
-                      it from their profile in the Clients tab.
-                    </p>
-                  </section>
-                )}
-                {templates ? (
-                  <TemplatesPanel
-                    api={templates}
-                    gymId={gym.id}
-                    gymNames={gymNames}
-                    items={session.items}
-                    title={session.meta.title}
-                    notes={session.meta.notes}
-                    onUse={(t, how) => void applyTemplate(t, how)}
-                  />
-                ) : null}
-              </SessionTab>
-            )}
-            {tab === 'run' && layout && (
-              <RunTab
-                run={run}
-                items={session.items}
-                equipById={equipById}
-                templates={templates}
-                history={past}
-                historyError={pastError}
-                onStart={startRun}
-                onEnd={endRun}
-                onReset={resetRun}
-                onGo={rc.go}
-                onCopyLog={() => void copyLog()}
-                onLoadTemplate={(t) => void applyTemplate(t, 'replace', true)}
-                onCopyEntry={(e) => void copyEntry(e)}
-                onDeleteEntry={(e) => void deleteEntry(e)}
-                onPdfEntry={pdfEntry}
-                status={runMsg}
-                place={placeOf}
-              />
-            )}
-            {tab === 'clients' && (
-              <ClientsTab
-                clients={clients}
-                error={clientsError}
-                api={clientsApi}
-                profile={profile}
-                profileApi={profileApi}
-                onProfileSaved={setProfile}
-                onChanged={refreshClients}
-                onOpenProgramme={(prog, client) => void openProgramme(prog, client)}
-                say={say}
-                shareApi={shareApi}
-                shareContext={{ gymId: gym.id, gymLine, layout, library }}
-              />
-            )}
-            {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
-              <p className="hint">Waiting for the floor plan…</p>
-            )}
-            {tab === 'gyms' && (
-              <GymsTab
-                gyms={gyms}
-                openId={gym.id}
-                dirty={dirty}
-                api={gymsApi}
-                disabled={runLive}
-                onCreate={createGym}
-                onDuplicate={duplicateGym}
-                onOpen={(id) => void requestSwitch(id)}
-                onChanged={onGymsChanged}
-                say={say}
-              />
-            )}
-            {tab !== 'zone' && tab !== 'session' && tab !== 'run' && tab !== 'clients' && tab !== 'gyms' && (
-              <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
-            )}
-          </div>
-        </aside>
-      </main>
-
-      {popupEq && layout && (
-        <MachinePopup
-          equipment={popupEq}
-          place={placeOf(popupEq)}
-          exercises={exercisesFor(library, popupEq.id)}
-          inSession={session.items
-            .filter((it) => it.eid === popupEq.id && it.xid)
-            .reduce<Record<string, number>>((m, it) => ({ ...m, [it.xid!]: (m[it.xid!] ?? 0) + 1 }), {})}
-          onAdd={(x) => addExercise(popupEq.id, x)}
-          onClose={() => setSelEq(null)}
-        />
-      )}
-
-      {toast && (
-        <div className="toast" role="status" aria-live="polite">
-          {toast.msg}
-          {toast.view && tab !== 'session' && (
-            <button type="button" className="link" onClick={() => setTab('session')}>
-              View session
+              <button type="button" aria-pressed={mode === 'edit'} onClick={() => chooseMode('edit')}>
+                Edit layout
+              </button>
+            </div>
+            <button type="button" className="btn sm" onClick={onSignOut}>
+              Sign out
             </button>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        </header>
+
+        {showHud && layout && (
+          <div ref={hudRef}>
+            <RunHud
+              run={run}
+              items={session.items}
+              equipById={equipById}
+              title={session.meta.title}
+              client={session.meta.client}
+              onStart={startRun}
+              onPause={rc.pause}
+              onResume={rc.resume}
+              onBack={rc.back}
+              onNext={nextStep}
+              onCompleteSet={rc.completeSet}
+              onSkipRest={rc.skipRest}
+              onCopyLog={() => void copyLog()}
+              onReset={resetRun}
+            />
+          </div>
+        )}
+        <p className="sr" role="status" aria-live="polite">
+          {announce}
+        </p>
+
+        <GymBar
+          gyms={gyms}
+          gymId={gym.id}
+          onChange={(id) => void requestSwitch(id)}
+          disabled={runLive}
+          ask={
+            ask
+              ? {
+                  target: titleOf(gyms.find((g) => g.id === ask.id) ?? gym),
+                  dirty: ask.dirty,
+                  moved: ask.moved,
+                  dropped: ask.dropped,
+                  onGo: (how) => void doSwitch(ask.id, how, ask.items),
+                  onCancel: () => setAsk(null),
+                }
+              : null
+          }
+          edit={
+            editing && layoutApi
+              ? { dirty, saving, onSave: () => void saveLayout(), onDiscard: discardLayout }
+              : null
+          }
+        />
+
+        <main className="grid">
+          <section className="mapcol" aria-label="Gym floor map">
+            {layout && activeFloor && (
+              <>
+                <FloorTabs
+                  floors={layout.floors}
+                  floorId={activeFloor.id}
+                  counts={itemsPerFloor(session.items, equipById)}
+                  onChange={changeFloor}
+                />
+                <MuscleChips filter={filter} onChange={setFilter} />
+              </>
+            )}
+            <div className="mapscroll">
+              {gymState.status === 'loading' && (
+                <div className="map-placeholder">Loading the floor plan…</div>
+              )}
+              {gymState.status === 'error' && (
+                <div className="map-placeholder" role="alert">
+                  {`Could not load the floor plan: ${gymState.message}`}
+                </div>
+              )}
+              {layout && activeFloor && (
+                <FloorPlan
+                  layout={layout}
+                  floorId={activeFloor.id}
+                  filter={filter}
+                  selZone={selZone}
+                  selEq={selEq}
+                  items={editing ? undefined : session.items}
+                  run={showRun && !editing ? run : null}
+                  onSelectZone={(id) => {
+                    setSelZone(id);
+                    setSelStruct(null);
+                    setPart(0);
+                  }}
+                  onSelectEq={(id) => {
+                    setSelStruct(null);
+                    selectMachine(id);
+                  }}
+                  edit={
+                    editing
+                      ? {
+                          snap: snapOn,
+                          part,
+                          selStruct,
+                          onSelectStruct: (id) => {
+                            setSelStruct(id);
+                            setSelZone(null);
+                            setSelEq(null);
+                          },
+                          onLayout: setDraft,
+                        }
+                      : null
+                  }
+                />
+              )}
+            </div>
+            <Legend run={showRun} />
+            <p className="hint">{hint}</p>
+          </section>
+          <aside className="panel" aria-label="Planner panel">
+            <div className="tabs" role="tablist">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  id={`tab-${t.id}`}
+                  aria-selected={tab === t.id}
+                  aria-controls="panelBody"
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.id === 'zone' && mode === 'edit' ? 'Layout' : t.label}
+                  {t.id === 'session' ? ` (${session.items.length})` : ''}
+                  {t.id === 'run' && runLive ? ' ●' : ''}
+                </button>
+              ))}
+            </div>
+            <div id="panelBody" role="tabpanel" aria-labelledby={`tab-${tab}`} className="panel-body">
+              {tab === 'zone' && editing && layout && activeFloor && (
+                <LayoutTab
+                  layout={layout}
+                  floorId={activeFloor.id}
+                  snap={snapOn}
+                  onSnap={setSnapOn}
+                  selZone={selZone}
+                  selEq={selEq}
+                  part={part}
+                  onPart={setPart}
+                  onSelectZone={(id) => {
+                    setSelZone(id);
+                    if (id) setSelStruct(null);
+                  }}
+                  onSelectEq={(id) => {
+                    setSelEq(id);
+                    if (id) setSelStruct(null);
+                  }}
+                  selStruct={selStruct}
+                  onSelectStruct={(id) => {
+                    setSelStruct(id);
+                    if (id) {
+                      setSelZone(null);
+                      setSelEq(null);
+                    }
+                  }}
+                  onGoToFloor={(id) => setFloorId(id)}
+                  catalogue={catalogue}
+                  onOpenCatalogue={() => setTab('catalogue')}
+                  onCopies={(c) => {
+                    copiesRef.current = [...copiesRef.current, ...c];
+                  }}
+                  onChange={setDraft}
+                  library={library}
+                  savedEquipment={new Set((savedLayout?.equipment ?? []).map((e) => e.id))}
+                  onLink={(x, e, on) => void linkExercise(x, e, on)}
+                  say={say}
+                />
+              )}
+              {tab === 'zone' && !editing && layout && activeFloor && (
+                <ZonesTab
+                  layout={layout}
+                  library={library}
+                  floorId={activeFloor.id}
+                  selEq={selEq}
+                  onSelectEq={setSelEq}
+                  onAdd={addExercise}
+                />
+              )}
+              {tab === 'session' && layout && (
+                <SessionTab
+                  meta={session.meta}
+                  items={session.items}
+                  layout={layout}
+                  library={library}
+                  dispatch={dispatch}
+                  clients={clients ?? []}
+                >
+                  {clientsApi && clients ? (
+                    <AssignPanel
+                      clients={clients}
+                      items={session.items}
+                      title={session.meta.title}
+                      notes={session.meta.notes}
+                      gymId={gym.id}
+                      api={clientsApi}
+                      selectedId={session.meta.clientId}
+                      onAssigned={refreshClients}
+                    />
+                  ) : null}
+                  {session.items.length > 0 && (
+                    <section className="share" aria-label="Send to your client">
+                      <h3>Send to your client</h3>
+                      <SendActions
+                        key={session.meta.clientId}
+                        pdf={
+                          buildShare({
+                            title: session.meta.title,
+                            client: session.meta.client,
+                            coach: session.meta.coach,
+                            date: session.meta.date,
+                            notes: session.meta.notes,
+                            gym: gymLine,
+                            items: snapsOf(session.items),
+                            layout,
+                            library,
+                            models,
+                          }).pdf
+                        }
+                        whatsapp={sending?.whatsapp ?? ''}
+                        email={sending?.email ?? ''}
+                      />
+                      <p className="sub">
+                        To send a link the client opens on their phone, assign the programme to them and share
+                        it from their profile in the Clients tab.
+                      </p>
+                    </section>
+                  )}
+                  {templates ? (
+                    <TemplatesPanel
+                      api={templates}
+                      gymId={gym.id}
+                      gymNames={gymNames}
+                      items={session.items}
+                      title={session.meta.title}
+                      notes={session.meta.notes}
+                      onUse={(t, how) => void applyTemplate(t, how)}
+                    />
+                  ) : null}
+                </SessionTab>
+              )}
+              {tab === 'run' && layout && (
+                <RunTab
+                  run={run}
+                  items={session.items}
+                  equipById={equipById}
+                  templates={templates}
+                  history={past}
+                  historyError={pastError}
+                  onStart={startRun}
+                  onEnd={endRun}
+                  onReset={resetRun}
+                  onGo={rc.go}
+                  onCopyLog={() => void copyLog()}
+                  onLoadTemplate={(t) => void applyTemplate(t, 'replace', true)}
+                  onCopyEntry={(e) => void copyEntry(e)}
+                  onDeleteEntry={(e) => void deleteEntry(e)}
+                  onPdfEntry={pdfEntry}
+                  status={runMsg}
+                  place={placeOf}
+                />
+              )}
+              {tab === 'clients' && (
+                <ClientsTab
+                  clients={clients}
+                  error={clientsError}
+                  api={clientsApi}
+                  profile={profile}
+                  profileApi={profileApi}
+                  onProfileSaved={setProfile}
+                  onChanged={refreshClients}
+                  onOpenProgramme={(prog, client) => void openProgramme(prog, client)}
+                  say={say}
+                  shareApi={shareApi}
+                  shareContext={{ gymId: gym.id, gymLine, layout, library }}
+                />
+              )}
+              {!layout && (tab === 'zone' || tab === 'session' || tab === 'run') && (
+                <p className="hint">Waiting for the floor plan…</p>
+              )}
+              {tab === 'catalogue' && (
+                <CatalogueTab
+                  catalogue={catalogue}
+                  error={catalogueError}
+                  api={catalogueApi}
+                  onChanged={refreshCatalogue}
+                />
+              )}
+              {tab === 'gyms' && (
+                <GymsTab
+                  gyms={gyms}
+                  openId={gym.id}
+                  dirty={dirty}
+                  api={gymsApi}
+                  disabled={runLive}
+                  onCreate={createGym}
+                  onDuplicate={duplicateGym}
+                  onOpen={(id) => void requestSwitch(id)}
+                  onChanged={onGymsChanged}
+                  say={say}
+                />
+              )}
+              {tab !== 'zone' &&
+                tab !== 'session' &&
+                tab !== 'run' &&
+                tab !== 'clients' &&
+                tab !== 'gyms' &&
+                tab !== 'catalogue' && (
+                  <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
+                )}
+            </div>
+          </aside>
+        </main>
+
+        {popupEq && layout && (
+          <MachinePopup
+            equipment={popupEq}
+            place={placeOf(popupEq)}
+            exercises={exercisesFor(library, popupEq.id)}
+            inSession={session.items
+              .filter((it) => it.eid === popupEq.id && it.xid)
+              .reduce<Record<string, number>>((m, it) => ({ ...m, [it.xid!]: (m[it.xid!] ?? 0) + 1 }), {})}
+            onAdd={(x) => addExercise(popupEq.id, x)}
+            onClose={() => setSelEq(null)}
+          />
+        )}
+
+        {toast && (
+          <div className="toast" role="status" aria-live="polite">
+            {toast.msg}
+            {toast.view && tab !== 'session' && (
+              <button type="button" className="link" onClick={() => setTab('session')}>
+                View session
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </ModelsContext.Provider>
   );
 }

@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @pt/web dev",
     "build": "pnpm --filter @pt/web build",
+    "demo:build": "node scripts/build-demo.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

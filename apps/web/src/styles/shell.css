@@ -334,3 +334,30 @@ code {
 .gask p {
   margin: 0 0 8px;
 }
+
+.demo-banner {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 16px);
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 500 11px var(--f-mono);
+  opacity: 0.92;
+}
+.demo-banner button {
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}

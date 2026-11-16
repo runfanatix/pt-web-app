@@ -490,7 +490,17 @@ export function layoutCanonical(l: Layout): string {
     l.equipment
       .slice()
       .sort((a, b) => a.id.localeCompare(b.id))
-      .map((e) => [e.id, e.name, e.zone, e.type, r(e.x), r(e.y), e.muscles.slice().sort(), e.notes]),
+      .map((e) => [
+        e.id,
+        e.name,
+        e.zone,
+        e.type,
+        r(e.x),
+        r(e.y),
+        e.muscles.slice().sort(),
+        e.notes,
+        e.catalogueId ?? null,
+      ]),
   ]);
 }
 
@@ -535,6 +545,7 @@ export function layoutSavePayload(l: Layout) {
       y: e.y,
       muscles: e.muscles,
       notes: e.notes,
+      catalogue_item_id: e.catalogueId ?? null,
     })),
   };
 }

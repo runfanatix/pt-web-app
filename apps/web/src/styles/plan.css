@@ -365,3 +365,24 @@
 .hnd .hgrip[r] {
   fill: var(--paper);
 }
+.model {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.specs {
+  display: grid;
+  gap: 2px 12px;
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+.specs div {
+  display: flex;
+  gap: 8px;
+}
+.specs dt {
+  color: var(--muted);
+}
+.specs dd {
+  margin: 0;
+}

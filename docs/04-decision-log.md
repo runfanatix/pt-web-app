@@ -110,3 +110,12 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **If saving a new gym's plan fails**, the half-made gym row is deleted again.
 - **Deleting a gym** (never the open one, never the last one, two taps) deletes its plan, machines and templates. Finished workouts and client programmes are kept, with the gym left blank.
 - **No new migration**: gyms, layouts and links use the existing tables and `save_gym_layout`; the database tests cover creating, copying, deleting and isolation between trainers.
+
+## Phase 8 decisions (equipment catalogue)
+
+- **Built as a framework the trainer fills in by hand**, because there is no full Technogym or Eleiko list yet. Manufacturers and models are rows the trainer adds in the Catalogue tab; nothing is pre-loaded. A bulk import (`scripts/import-catalogue.ts`, JSON) exists for when a list turns up; rows can be loaded as **shared** (everyone reads them, nobody edits them in the app) or into one trainer's own catalogue.
+- **A model has**: manufacturer, model name, item code (unique within its manufacturer when given), kind (cardio, machine, free weights, rig, open space), muscles, specification rows (a label and a value each, up to 30) and notes.
+- **A machine on the plan points at one model** (`equipment.catalogue_item_id`). The machine keeps its own name; when a model is picked the trainer can tick "use the model name" and "use the model's kind and muscles" (both ticked by default), so the plan, the muscle filter and the routine agree with the real machine. A new machine can also be created straight from a model.
+- **Where the model shows**: machine pop-up, Zones tab (with its specifications), Session and Run lists, the run bar, and the PDF and message text ("Chest press · Technogym Selection Chest Press"). It is not on the client's public link yet: that database function does not return catalogue data, and adding it is a change to what a visitor can see.
+- **Deleting a model or manufacturer never deletes a machine**: the machine keeps its name and loses only the link (the screen says how many machines use the model first). The layout save refuses a model the trainer cannot see.
+- **Left for later**: item images (Storage), a gym walkthrough mode to place catalogue items, and licensing of any supplier content (decision-log question 4 is still open for whoever supplies the lists).
