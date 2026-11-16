@@ -8,13 +8,16 @@ import {
   isCoreConsent,
   type PortalMembership,
   type PortalOverview,
+  type PortalWorkout,
   type SharedProgramme,
+  fmtClock,
 } from '@pt/core';
 import { useAuth } from '../auth/AuthProvider.tsx';
 import { createPortalApi, sendSignInLink, type PortalApi } from '../data/portal.ts';
 import { ConfirmButton } from '../components/ConfirmButton.tsx';
 import { ProgrammeView } from '../components/PublicProgramme.tsx';
 import { portalLink } from '../lib/links.ts';
+import { PortalRun } from './PortalRun.tsx';
 
 /** The brand mark and name: a placeholder until there is a real logo. */
 function Brand() {
@@ -97,7 +100,94 @@ function PortalSignIn({ client }: { client: SupabaseClient }) {
   );
 }
 
-type Tab = 'programmes' | 'privacy';
+type Tab = 'programmes' | 'workouts' | 'privacy';
+
+/** The person's finished workouts: the ones they did themselves (they can delete these) and their trainer's records. */
+function WorkoutsList({
+  api,
+  say,
+  refreshKey,
+}: {
+  api: PortalApi;
+  say: (s: string) => void;
+  refreshKey: number;
+}) {
+  const [list, setList] = useState<PortalWorkout[] | null>(null);
+  const [error, setError] = useState('');
+  async function load() {
+    try {
+      setList(await api.history());
+      setError('');
+    } catch (err) {
+      setError(`Could not load your workouts: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, refreshKey]);
+  if (error)
+    return (
+      <p role="alert" className="err">
+        {error}
+      </p>
+    );
+  if (!list) return <p className="hint">Loading your workouts…</p>;
+  if (!list.length)
+    return (
+      <section className="card" aria-label="No workouts yet">
+        <h3>No workouts yet</h3>
+        <p className="sub">Open a programme and press Start workout. Finished workouts are kept here.</p>
+      </section>
+    );
+  return (
+    <section className="card" aria-label="My workouts">
+      <h3>My workouts</h3>
+      <ul className="rows" aria-label="Workouts">
+        {list.map((w) => (
+          <li key={w.id}>
+            <details>
+              <summary>
+                <strong>{w.title}</strong>
+                <span className="sub">
+                  {`${fmtDate(w.date)} · ${fmtClock(w.totalMs)} · ${w.doneN} of ${w.steps.length} done · ${w.byClient ? 'done by you' : `recorded by ${w.trainerName || 'your trainer'}`}`}
+                </span>
+              </summary>
+              <ol className="runlist">
+                {w.steps.map((s) => (
+                  <li key={s.n} className={`ri st-${s.done ? 'done' : 'skip'}`}>
+                    <span className="num">{s.n}</span>
+                    <div className="txt">
+                      <strong>{s.exercise}</strong>
+                      <span className="sub">{`${s.machine ? s.machine + ' · ' : ''}${s.sets} x ${s.reps}`}</span>
+                    </div>
+                    <div className="rtime">
+                      <b>{fmtClock(s.ms)}</b>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {w.byClient && (
+                <ConfirmButton
+                  aria-label={`Delete workout ${w.title}`}
+                  onConfirm={() =>
+                    void api
+                      .deleteRun(w.id)
+                      .then(() => load())
+                      .then(() => say('Workout deleted.'))
+                      .catch((e: unknown) => say(e instanceof Error ? e.message : String(e)))
+                  }
+                >
+                  Delete this workout
+                </ConfirmButton>
+              )}
+            </details>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function PrivacyCard({
   m,
@@ -207,7 +297,9 @@ function PortalHome({ client }: { client: SupabaseClient }) {
   const [overview, setOverview] = useState<PortalOverview | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('programmes');
-  const [open, setOpen] = useState<SharedProgramme | null>(null);
+  const [open, setOpen] = useState<{ id: string; p: SharedProgramme } | null>(null);
+  const [running, setRunning] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
   const [opening, setOpening] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -228,7 +320,7 @@ function PortalHome({ client }: { client: SupabaseClient }) {
     setOpening(id);
     try {
       const p = await api.programme(id);
-      if (p) setOpen(p);
+      if (p) setOpen({ id, p });
       else setMsg('That programme is no longer available.');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : String(err));
@@ -237,9 +329,31 @@ function PortalHome({ client }: { client: SupabaseClient }) {
     }
   }
 
+  if (open && running)
+    return (
+      <PortalRun
+        programmeId={open.id}
+        p={open.p}
+        api={api}
+        onExit={() => {
+          setRunning(false);
+          setHistoryKey((n) => n + 1);
+        }}
+      />
+    );
   if (open)
     return (
-      <ProgrammeView p={open} back={{ label: '← Back to my programmes', onClick: () => setOpen(null) }} />
+      <ProgrammeView
+        p={open.p}
+        back={{ label: '← Back to my programmes', onClick: () => setOpen(null) }}
+        actions={
+          open.p.items.length > 0 ? (
+            <button type="button" className="btn primary" onClick={() => setRunning(true)}>
+              Start workout
+            </button>
+          ) : null
+        }
+      />
     );
 
   return (
@@ -287,6 +401,7 @@ function PortalHome({ client }: { client: SupabaseClient }) {
             {(
               [
                 ['programmes', 'My programmes'],
+                ['workouts', 'My workouts'],
                 ['privacy', 'My privacy'],
               ] as const
             ).map(([id, label]) => (
@@ -304,41 +419,43 @@ function PortalHome({ client }: { client: SupabaseClient }) {
           </div>
 
           <main className="stack">
-            {overview.memberships.map((m) =>
-              tab === 'programmes' ? (
-                <section key={m.clientId} className="card" aria-label={`Programmes from ${m.trainerName}`}>
-                  <h3>{m.trainerName}</h3>
-                  <ContactLine m={m} />
-                  {m.programmes.length ? (
-                    <ul className="rows" aria-label={`Programmes from ${m.trainerName}`}>
-                      {m.programmes.map((p) => (
-                        <li key={p.id}>
-                          <div className="txt">
-                            <span>{p.title}</span>
-                            <span className="sub">
-                              {`${fmtDate(p.assignedOn)} · ${p.exercises} exercise${p.exercises === 1 ? '' : 's'}${p.gym ? ` · ${p.gym}` : ''}`}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn sm primary"
-                            aria-label={`Open ${p.title}`}
-                            disabled={opening === p.id}
-                            onClick={() => void openProgramme(p.id)}
-                          >
-                            {opening === p.id ? 'Opening…' : 'Open'}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="sub">{m.trainerName} has not given you a programme yet.</p>
-                  )}
-                </section>
-              ) : (
-                <PrivacyCard key={m.clientId} m={m} api={api} onChanged={load} say={setMsg} />
-              ),
-            )}
+            {tab === 'workouts' && <WorkoutsList api={api} say={setMsg} refreshKey={historyKey} />}
+            {tab !== 'workouts' &&
+              overview.memberships.map((m) =>
+                tab === 'programmes' ? (
+                  <section key={m.clientId} className="card" aria-label={`Programmes from ${m.trainerName}`}>
+                    <h3>{m.trainerName}</h3>
+                    <ContactLine m={m} />
+                    {m.programmes.length ? (
+                      <ul className="rows" aria-label={`Programmes from ${m.trainerName}`}>
+                        {m.programmes.map((p) => (
+                          <li key={p.id}>
+                            <div className="txt">
+                              <span>{p.title}</span>
+                              <span className="sub">
+                                {`${fmtDate(p.assignedOn)} · ${p.exercises} exercise${p.exercises === 1 ? '' : 's'}${p.gym ? ` · ${p.gym}` : ''}`}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn sm primary"
+                              aria-label={`Open ${p.title}`}
+                              disabled={opening === p.id}
+                              onClick={() => void openProgramme(p.id)}
+                            >
+                              {opening === p.id ? 'Opening…' : 'Open'}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="sub">{m.trainerName} has not given you a programme yet.</p>
+                    )}
+                  </section>
+                ) : (
+                  <PrivacyCard key={m.clientId} m={m} api={api} onChanged={load} say={setMsg} />
+                ),
+              )}
           </main>
         </>
       )}

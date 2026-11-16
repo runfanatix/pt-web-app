@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { inviteEmail } from '../../../supabase/functions/_shared/invite-email.ts';
-import { consentLabel, inviteStatus, isCoreConsent, parsePortalOverview } from './index.ts';
+import {
+  consentLabel,
+  inviteStatus,
+  isCoreConsent,
+  parsePortalHistory,
+  parsePortalOverview,
+  portalRunPayload,
+} from './index.ts';
 
 const raw = {
   email: 'dan@example.com',
@@ -96,5 +103,95 @@ describe('the invitation email', () => {
     expect(inviteEmail({ trainerName: '', clientName: '', portalUrl: 'u', productName: 'P' }).text).toContain(
       'Hi there,',
     );
+  });
+});
+
+describe('a client’s workouts', () => {
+  const entry = {
+    id: 'r1',
+    clientId: null,
+    clientName: '',
+    coach: '',
+    title: 'Starter',
+    date: '2026-11-21',
+    startedAt: Date.parse('2026-11-21T07:00:00Z'),
+    totalMs: 65000,
+    plannedMin: 5,
+    doneN: 1,
+    gymId: null,
+    gymName: '',
+    steps: [
+      {
+        n: 1,
+        eid: 'm1',
+        machine: 'Press',
+        zone: 'Z',
+        exercise: 'Squat',
+        sets: 3,
+        reps: '10',
+        rest: 60,
+        ms: 60000,
+        done: true,
+        order: 1,
+      },
+      {
+        n: 2,
+        eid: '',
+        machine: 'Machine',
+        zone: '',
+        exercise: 'Row',
+        sets: 3,
+        reps: '8',
+        rest: 60,
+        ms: 0,
+        done: false,
+        order: 0,
+      },
+    ],
+  };
+
+  it('is sent to the database with ids, times and steps; a deleted machine becomes null', () => {
+    const p = portalRunPayload(entry);
+    expect(p).toMatchObject({
+      id: 'r1',
+      run_date: '2026-11-21',
+      started_at: '2026-11-21T07:00:00.000Z',
+      total_ms: 65000,
+    });
+    expect(p.steps.map((s) => [s.n, s.equipment_id, s.done, s.step_order])).toEqual([
+      [1, 'm1', true, 1],
+      [2, null, false, 0],
+    ]);
+  });
+
+  it('reads the history the database returns, newest first as given, with who did each one', () => {
+    const w = parsePortalHistory([
+      {
+        id: 'r1',
+        client_id: 'c1',
+        title: 'Starter',
+        run_date: '2026-11-21',
+        total_ms: '65000',
+        planned_min: 5,
+        by_client: true,
+        gym: null,
+        trainer: 'Alice Fitness',
+        steps: [
+          { n: 2, machine: '', exercise_name: 'Row', sets: 3, reps: '8', ms: 0, done: false },
+          { n: 1, machine: 'Press', exercise_name: 'Squat', sets: 3, reps: '10', ms: 60000, done: true },
+        ],
+      },
+    ]);
+    expect(w[0]).toMatchObject({
+      id: 'r1',
+      totalMs: 65000,
+      byClient: true,
+      gym: '',
+      trainerName: 'Alice Fitness',
+      doneN: 1,
+    });
+    expect(w[0]!.steps.map((s) => s.n)).toEqual([1, 2]);
+    expect(parsePortalHistory(null)).toEqual([]);
+    expect(() => parsePortalHistory([{ id: 1 }])).toThrow();
   });
 });

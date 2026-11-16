@@ -644,6 +644,78 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     return json(mine ? programmeJson(db, plan, id) : null);
   }
 
+  const myClient = (clientId: unknown) =>
+    clients.find((c) => c.id === clientId && db.accounts.some((a) => a.client_id === c.id && !a.revoked_at));
+
+  if (path.endsWith('/rest/v1/rpc/portal_save_run')) {
+    const b = body as {
+      p_programme_id: string;
+      p_run: Record<string, unknown> & { steps?: Record<string, unknown>[] };
+    };
+    const owner = clients.find((c) => c.programmes.some((p) => p.id === b.p_programme_id));
+    const c = myClient(owner?.id);
+    const prog = c?.programmes.find((p) => p.id === b.p_programme_id) as Record<string, unknown> | undefined;
+    if (!c || !prog) return json(null);
+    const id = String(b.p_run.id || `run-${runs.length + 1}`);
+    const old = runs.findIndex((r) => r.id === id);
+    if (old >= 0 && !(runs[old]!.by_client && runs[old]!.client_id === c.id)) return json(null);
+    const gym = db.gyms.find((g) => g.id === prog.gym_id);
+    const row = {
+      id,
+      client_id: c.id,
+      gym_id: prog.gym_id ?? null,
+      client_name: c.name,
+      gym_name: gym ? [gym.name, gym.branch].filter(Boolean).join(' ') : '',
+      coach: '',
+      title: String(b.p_run.title ?? prog.title),
+      run_date: b.p_run.run_date,
+      started_at: b.p_run.started_at,
+      total_ms: b.p_run.total_ms,
+      planned_min: b.p_run.planned_min,
+      by_client: true,
+      run_steps: (b.p_run.steps ?? []).map((st) => ({ ...st })),
+    } as StoredRun;
+    if (old >= 0) runs[old] = row;
+    else runs.push(row);
+    return json(id);
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_history')) {
+    const mine = runs.filter((r) => myClient(r.client_id));
+    return json(
+      [...mine]
+        .sort((x, y) => String(y.started_at ?? '').localeCompare(String(x.started_at ?? '')))
+        .map((r) => ({
+          id: r.id,
+          client_id: r.client_id,
+          title: r.title,
+          run_date: r.run_date,
+          total_ms: r.total_ms,
+          planned_min: r.planned_min,
+          by_client: r.by_client === true,
+          gym: r.gym_name || null,
+          trainer: profile.business_name,
+          steps: r.run_steps.map((st) => ({
+            n: st.n,
+            machine: st.machine,
+            exercise_name: st.exercise_name,
+            sets: st.sets,
+            reps: st.reps,
+            ms: st.ms,
+            done: st.done,
+          })),
+        })),
+    );
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_delete_run')) {
+    const id = (body as { p_run_id: string }).p_run_id;
+    const i = runs.findIndex((r) => r.id === id && r.by_client === true && myClient(r.client_id));
+    if (i < 0) return json(false);
+    runs.splice(i, 1);
+    return json(true);
+  }
+
   if (path.endsWith('/rest/v1/rpc/portal_withdraw_consent')) {
     const b = body as { p_client_id: string; p_purpose: string; p_detail: string };
     const c = clients.find((x) => x.id === b.p_client_id);

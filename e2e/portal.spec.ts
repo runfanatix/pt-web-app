@@ -139,3 +139,49 @@ test('the portal never scrolls the page sideways and its buttons are big enough'
   expect(box.height).toBeGreaterThanOrEqual(44);
   await ctx.close();
 });
+
+test('the client runs their programme, it is saved, the trainer sees it as done by the client, and the client can delete it', async ({
+  page,
+  browser,
+}) => {
+  await trainerInvites(page);
+  const { ctx, client } = await clientPage(page, browser);
+  await client.clock.install();
+  await client.getByRole('button', { name: 'Open Starter' }).click();
+  await client.getByRole('button', { name: 'Start workout' }).click();
+  const bar = client.getByRole('region', { name: 'Live workout' });
+  await bar.getByRole('button', { name: 'Start workout' }).click();
+  await expect(client.locator('g.mk[class*="st-now"]').first()).toBeVisible();
+  await client.clock.runFor(45_000);
+  for (let i = 0; i < 20 && !(await bar.getByText('Workout finished').count()); i++) {
+    const skip = bar.getByRole('button', { name: /Skip rest/ });
+    if (await skip.count()) await skip.click();
+    else
+      await bar
+        .getByRole('button', { name: /^(Set done|Done, finish|Done, next|Finish)/ })
+        .first()
+        .click();
+  }
+  await expect(bar).toContainText('Workout finished');
+  await expect(client.getByText(/saved to your history/)).toBeVisible();
+  expect(mock.runs).toHaveLength(1);
+  expect(mock.runs[0]).toMatchObject({ by_client: true, client_name: 'Dan Dillon', title: 'Starter' });
+  expect(Number(mock.runs[0]!.total_ms)).toBeGreaterThanOrEqual(45_000);
+
+  // the trainer sees it in Past runs, marked as the client's own
+  await page.reload();
+  await page.getByRole('tab', { name: /^Run/ }).click();
+  await expect(page.getByRole('list', { name: 'Past runs' })).toContainText('done by the client');
+
+  // the client finds it under My workouts and can delete it
+  await client.getByRole('button', { name: /Back to my programme/ }).click();
+  await client.getByRole('button', { name: /Back to my programmes/ }).click();
+  await client.getByRole('tab', { name: 'My workouts' }).click();
+  await expect(client.getByRole('list', { name: 'Workouts' })).toContainText('done by you');
+  await client.locator('summary').first().click();
+  await client.getByRole('button', { name: 'Delete workout Starter' }).click();
+  await client.getByRole('button', { name: 'Tap again to confirm' }).click();
+  await expect(client.getByText('No workouts yet')).toBeVisible();
+  expect(mock.runs).toHaveLength(0);
+  await ctx.close();
+});

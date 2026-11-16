@@ -130,3 +130,12 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **Consent withdrawal by the client** adds a "no" record (consent records stay append-only) and logs a consent-withdrawal request for the trainer. Withdrawing a core consent warns the client first. Other requests (access, correction, deletion, objection) are logged for the trainer to answer; nothing is deleted automatically.
 - **If the invitation email cannot be sent** (Resend not set up yet) the invitation is still saved and the trainer is given the portal link to send by WhatsApp.
 - **Offline demo**: a Client view and Trainer view switch in the demo banner; in the demo, "emailing" a sign-in link simply signs in.
+
+## Phase 9b decisions (clients run their own workouts)
+
+- **The client runs a programme from the portal** with the same run engine as the trainer (rest countdown, vibration and beep, wake lock, a run in progress kept across a reload, restored paused).
+- **Saved under the trainer, for that client**, marked as done by the client. The trainer sees it in Past runs; the client sees it under My workouts. A client can delete only workouts they did themselves; the trainer's own records stay with the trainer.
+- **Nothing is saved for a workout with no time on the clock.** If saving fails the client is told.
+- **The programme decides the gym and the client**, so a client cannot attach a workout to anyone else's record or gym. Saving is idempotent by id, and an id that belongs to someone else's run is refused.
+- **Retention**: each saved workout moves the client's keep-until date out to five years after it, as the trainer's own runs do.
+- **Not built**: progress charts over time, sharing a result with the trainer by message, editing a saved workout.

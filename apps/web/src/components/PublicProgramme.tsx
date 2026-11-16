@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { estimateSeconds, fmtDate, itemsPerFloor, pdfFileName, type SharedProgramme } from '@pt/core';
 import { fetchSharedProgramme } from '../data/share.ts';
@@ -71,9 +71,12 @@ export function PublicProgramme({ client, token }: { client: SupabaseClient; tok
 export function ProgrammeView({
   p,
   back,
+  actions,
 }: {
   p: SharedProgramme;
   back?: { label: string; onClick: () => void };
+  /** Extra buttons next to Save as PDF (the portal adds Start workout). */
+  actions?: ReactNode;
 }) {
   const [floorId, setFloorId] = useState<string | null>(null);
   const [selEq, setSelEq] = useState<string | null>(null);
@@ -147,6 +150,7 @@ export function ProgrammeView({
           </p>
         </div>
         <div className="topright">
+          {actions}
           <button type="button" className="btn primary" onClick={pdf}>
             Save as PDF
           </button>

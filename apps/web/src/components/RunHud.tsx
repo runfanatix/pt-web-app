@@ -27,7 +27,8 @@ interface Props {
   onNext: () => void;
   onCompleteSet: () => void;
   onSkipRest: () => void;
-  onCopyLog: () => void;
+  /** Leave out to hide the Copy log button (the client portal has no use for it). */
+  onCopyLog?: () => void;
   onReset: () => void;
 }
 
@@ -90,9 +91,11 @@ export function RunHud({
           <span className="sub">Planned about {planned} min</span>
         </div>
         <div className="hudbtns">
-          <button type="button" className="btn big" onClick={onCopyLog}>
-            Copy log
-          </button>
+          {onCopyLog && (
+            <button type="button" className="btn big" onClick={onCopyLog}>
+              Copy log
+            </button>
+          )}
           <button type="button" className="btn big" disabled={!doneN} onClick={onBack}>
             Undo last
           </button>

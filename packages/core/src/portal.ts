@@ -3,6 +3,7 @@
  * consent choices are described to them. Nothing here is private to the trainer: the function never returns it.
  */
 import { z } from 'zod';
+import type { HistoryEntry } from './history.ts';
 
 /** Placeholder branding until the real product name and logo exist. Change it here and everywhere follows. */
 export const BRAND = {
@@ -153,4 +154,108 @@ export function inviteStatus(
   if (accounts.length) return 'off';
   if (invites.some((i) => !i.acceptedAt && !i.revokedAt)) return 'expired';
   return invites.length ? 'off' : 'none';
+}
+
+/* ---------------------------------------------------------------- the client's own workouts */
+
+/** What `portal_save_run` receives for a finished workout. The programme decides the client and the gym. */
+export function portalRunPayload(e: HistoryEntry) {
+  return {
+    id: e.id,
+    title: e.title,
+    run_date: e.date,
+    started_at: e.startedAt ? new Date(e.startedAt).toISOString() : null,
+    total_ms: e.totalMs,
+    planned_min: e.plannedMin,
+    steps: e.steps.map((s) => ({
+      n: s.n,
+      equipment_id: s.eid || null,
+      machine: s.machine,
+      zone: s.zone,
+      exercise_name: s.exercise,
+      sets: s.sets,
+      reps: s.reps,
+      rest: s.rest,
+      ms: s.ms,
+      done: s.done,
+      step_order: s.order,
+    })),
+  };
+}
+
+const WorkoutRow = z.object({
+  id: z.string(),
+  client_id: z.string(),
+  title: z.string(),
+  run_date: z.string(),
+  total_ms: z.coerce.number(),
+  planned_min: z.coerce.number(),
+  by_client: z.boolean(),
+  gym: z.string().nullable(),
+  trainer: z.string().nullable(),
+  steps: z.array(
+    z.object({
+      n: z.number(),
+      machine: z.string(),
+      exercise_name: z.string(),
+      sets: z.number(),
+      reps: z.string(),
+      ms: z.coerce.number(),
+      done: z.boolean(),
+    }),
+  ),
+});
+
+export interface PortalWorkout {
+  id: string;
+  clientId: string;
+  title: string;
+  date: string;
+  totalMs: number;
+  plannedMin: number;
+  /** True when the client did it themselves (they can delete it); false when their trainer recorded it. */
+  byClient: boolean;
+  gym: string;
+  trainerName: string;
+  steps: {
+    n: number;
+    machine: string;
+    exercise: string;
+    sets: number;
+    reps: string;
+    ms: number;
+    done: boolean;
+  }[];
+  doneN: number;
+}
+
+/** Validates what `portal_history` returned (newest first). */
+export function parsePortalHistory(raw: unknown): PortalWorkout[] {
+  if (raw === null || raw === undefined) return [];
+  return WorkoutRow.array()
+    .parse(raw)
+    .map((r) => ({
+      id: r.id,
+      clientId: r.client_id,
+      title: r.title,
+      date: r.run_date,
+      totalMs: r.total_ms,
+      plannedMin: r.planned_min,
+      byClient: r.by_client,
+      gym: r.gym ?? '',
+      trainerName: r.trainer ?? '',
+      steps: r.steps
+        .slice()
+        .sort((a, b) => a.n - b.n)
+        .map((s) => ({
+          n: s.n,
+          machine: s.machine,
+          exercise: s.exercise_name,
+          sets: s.sets,
+          reps: s.reps,
+          ms: s.ms,
+          done: s.done,
+        })),
+      doneN: r.steps.filter((s) => s.done).length,
+    }));
 }
