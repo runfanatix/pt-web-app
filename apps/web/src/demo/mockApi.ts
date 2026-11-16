@@ -82,6 +82,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** The trainer's PayFast settings (one row, or none yet). */
+  paymentSettings: Record<string, unknown> | null;
   /** Invoices with their lines, as the app reads them. */
   invoices: Record<string, unknown>[];
   /** Booked sessions, as the app reads them. */
@@ -115,6 +117,7 @@ export function createMockDb(plan: ImportPlan): MockDb {
     accounts: [],
     bookings: [],
     invoices: [],
+    paymentSettings: null,
     layoutSaves: [],
     catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
@@ -846,6 +849,23 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     return json(out);
   }
 
+  if (path.endsWith('/rest/v1/payment_settings')) {
+    if (method === 'POST') {
+      db.paymentSettings = { ...(db.paymentSettings ?? {}), ...(body as Record<string, unknown>) };
+      return empty(201);
+    }
+    return json(db.paymentSettings);
+  }
+
+  // The offline demo cannot reach PayFast: "paying" just marks the invoice paid.
+  if (path.endsWith('/functions/v1/payfast-checkout')) {
+    const inv = db.invoices.find((i) => i.id === (body as { invoiceId: string }).invoiceId);
+    if (!inv || inv.status !== 'sent')
+      return { status: 404, body: { error: 'That invoice cannot be paid online.' } };
+    Object.assign(inv, { status: 'paid', paid_method: 'card', paid_at: new Date().toISOString() });
+    return json({ demo: true });
+  }
+
   if (path.endsWith('/functions/v1/send-invoice')) {
     const inv = db.invoices.find((i) => i.id === (body as { invoiceId: string }).invoiceId);
     if (!inv) return { status: 404, body: { error: 'That invoice is not available.' } };
@@ -971,6 +991,11 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
       db.invoices
         .filter((i) => i.client_id && myClient(i.client_id) && ['sent', 'paid'].includes(String(i.status)))
         .map((i) => ({
+          pay_online: !!(
+            db.paymentSettings?.enabled &&
+            db.paymentSettings.merchant_id &&
+            db.paymentSettings.merchant_key
+          ),
           id: i.id,
           client_id: i.client_id,
           number: i.number,

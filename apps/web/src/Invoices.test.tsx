@@ -110,6 +110,14 @@ function fakeApi(initial: Invoice[] = [], settings: Partial<ReturnType<typeof de
       );
     }),
     email: vi.fn(async () => true),
+    paymentSettings: vi.fn(async () => ({
+      enabled: false,
+      sandbox: true,
+      merchantId: '',
+      hasKey: false,
+      hasPassphrase: false,
+    })),
+    savePaymentSettings: vi.fn(async () => {}),
     removeDraft: vi.fn(async (id: string) => {
       rows = rows.filter((r) => r.id !== id);
     }),
@@ -332,6 +340,7 @@ describe('the invoice file and email', () => {
         total: 100,
         notes: '',
         paidAt: null,
+        payOnline: false,
         trainerName: 'AF',
         trainerAddress: '',
         trainerEmail: '',

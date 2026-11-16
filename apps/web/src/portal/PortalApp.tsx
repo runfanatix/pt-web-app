@@ -128,6 +128,37 @@ function InvoicesList({
 }) {
   const [list, setList] = useState<PortalInvoice[] | null>(null);
   const [error, setError] = useState('');
+  const [paying, setPaying] = useState('');
+  const [tick, setTick] = useState(0);
+  const justPaid = new URLSearchParams(window.location.search).get('paid');
+  async function payNow(i: PortalInvoice) {
+    setPaying(i.id);
+    try {
+      const r = await api.payOnline(i.id);
+      if ('demo' in r) {
+        setTick((n) => n + 1);
+        say('Demo: payment received. In the real app you would now be taken to PayFast.');
+        return;
+      }
+      // post the signed form to PayFast: the browser leaves this page and comes back to /portal when done
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = r.url;
+      for (const [k, v] of Object.entries(r.fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = v;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPaying('');
+    }
+  }
   useEffect(() => {
     api.list().then(
       (l) => {
@@ -137,7 +168,7 @@ function InvoicesList({
       (err: unknown) =>
         setError(`Could not load your invoices: ${err instanceof Error ? err.message : String(err)}`),
     );
-  }, [api]);
+  }, [api, tick]);
   if (error)
     return (
       <p role="alert" className="err">
@@ -156,6 +187,11 @@ function InvoicesList({
   const owing = list.filter((i) => i.status === 'sent');
   return (
     <>
+      {justPaid && (
+        <p role="status" className="card">
+          {`Thank you. PayFast is confirming your payment for ${justPaid}: it shows here as paid within a minute or two. Refresh this page if it does not.`}
+        </p>
+      )}
       {owing.length > 0 && (
         <p role="status">
           <strong>{`You owe ${rand(owing.reduce((n, i) => n + i.total, 0))}`}</strong>
@@ -190,6 +226,18 @@ function InvoicesList({
                   <h4>How to pay</h4>
                   {i.pay.bankDetails && (
                     <pre className="paybox">{`${i.pay.bankDetails}\nReference: ${i.number}`}</pre>
+                  )}
+                  {i.payOnline && (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      disabled={paying === i.id}
+                      onClick={() => void payNow(i)}
+                    >
+                      {paying === i.id
+                        ? 'Opening PayFast…'
+                        : `Pay ${rand(i.total)} now by card or instant EFT`}
+                    </button>
                   )}
                   {i.pay.paymentLink && (
                     <a className="btn primary" href={i.pay.paymentLink} target="_blank" rel="noreferrer">

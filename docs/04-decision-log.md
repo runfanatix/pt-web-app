@@ -159,3 +159,14 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **VAT is a single percentage on the subtotal** (0 by default, since many trainers are not VAT-registered). A proper tax invoice with VAT numbers is not built.
 - **Invoices outlive the client**: erasing a client keeps their invoices for tax records, with the name and email as they were.
 - **Money is whole cents** everywhere; amounts show in South African style (R1 800,00).
+
+## Phase 11b decisions (online payments)
+
+- **Owner's choice (2026-11-24): PayFast**, "with the option to change later". The provider is a column on the payment settings and the PayFast code is a self-contained module, so a second provider is an addition, not a rewrite.
+- **Each trainer uses their own PayFast account.** The money goes straight from the client to the trainer; the app never holds it. The trainer's merchant key and passphrase are stored in a table only that trainer can read; they are never in a client's page or in the portal's data (a test checks this).
+- **The payment form is signed on the server** (the passphrase must stay secret), by a function that first checks, as the signed-in client, that the invoice is theirs, is waiting to be paid, and that online payment is on.
+- **A payment only counts when five things hold**: the signature matches, the status is COMPLETE, it names the trainer's own merchant ID, PayFast itself confirms it when asked, and the amount equals the invoice total to the cent. A wrong amount is recorded for the trainer to see but does not mark the invoice paid. The same payment reported twice does nothing, and an invoice can never be paid twice.
+- **The notification address needs no PayFast setup**: it is sent with each payment. Only the passphrase has to match what the trainer set in PayFast.
+- **Test mode is the default** (PayFast's sandbox), so the trainer can try the whole thing with no real money.
+- **The earlier "payment link" field and bank details stay**, so a client can always pay by EFT if online payment is off or fails.
+- **Not tested against PayFast itself**: the signing and checking are tested against Node's own MD5 and the documented rules, but a real sandbox payment is the owner's first step (docs/12-go-live.md).

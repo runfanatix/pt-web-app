@@ -339,6 +339,7 @@ const PortalRow = z.object({
   total_cents: z.number(),
   notes: z.string(),
   paid_at: z.string().nullable(),
+  pay_online: z.boolean().default(false),
   trainer: z.object({
     business_name: z.string(),
     address: z.string(),
@@ -364,6 +365,8 @@ export interface PortalInvoice {
   total: number;
   notes: string;
   paidAt: string | null;
+  /** The trainer takes online payment (PayFast): the client can pay this invoice now. */
+  payOnline: boolean;
   trainerName: string;
   trainerAddress: string;
   trainerEmail: string;
@@ -390,6 +393,7 @@ export function parsePortalInvoices(raw: unknown): PortalInvoice[] {
       total: r.total_cents,
       notes: r.notes,
       paidAt: r.paid_at,
+      payOnline: r.pay_online,
       trainerName: r.trainer.business_name,
       trainerAddress: r.trainer.address,
       trainerEmail: r.trainer.contact_email,
