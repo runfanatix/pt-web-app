@@ -88,6 +88,15 @@ beforeAll(async () => {
 });
 
 describe('the catalogue and its privacy', () => {
+  it('the migration can be run a second time without an error or losing data', async () => {
+    const before = (await db.query<{ n: number }>('select count(*)::int as n from manufacturers')).rows[0]!.n;
+    await db.exec(
+      readFileSync(join(REPO_ROOT, 'supabase', 'migrations', '20261119090000_catalogue.sql'), 'utf8'),
+    );
+    const after = (await db.query<{ n: number }>('select count(*)::int as n from manufacturers')).rows[0]!.n;
+    expect(after).toBe(before);
+  });
+
   it('a trainer builds their own manufacturers and models, and reads them back through the app query shape', async () => {
     const m = await maker(alice, 'Technogym');
     await model(alice, m, 'Selection Chest Press', 'MPY01');
