@@ -25,8 +25,17 @@ Clients have no table access. They call `portal_bookings` (their own sessions, n
 `portal_respond_booking` (only for their own session that has not started and is not cancelled). The trainer's bookings
 can only name the trainer's own clients and gyms. The migration is safe to run twice.
 
+## Automatic reminders (Phase 10b)
+In **Calendar > Automatic reminders** the trainer switches on an email reminder to clients and chooses how long before a
+session it goes (2, 12, 24 or 48 hours). A job that runs every half hour (docs/12-go-live.md) emails each client once
+per session, with the day, time, place, who to tell if they cannot come, and a calendar file. Not sent: sessions that are
+cancelled or missed, ones the client said they cannot make, clients with no email address, or clients who turned
+reminders off (a tick box under **My sessions** in their portal, with a link to it in every email). Moving a session
+makes it eligible again. If an email fails it is tried again at the next run. The calendar shows "reminder sent" on
+each session.
+
 ## Not built yet
-- Automatic reminders by email or WhatsApp (needs the Resend setup in docs/09; WhatsApp needs a provider).
+- Reminders by WhatsApp or SMS (needs a provider; the one-tap WhatsApp reminder link is still there).
 - Client-requested bookings, a bookable availability calendar, packages and session credits.
 - A two-way sync with Google or Outlook calendars (the `.ics` file is a one-way export).
 - Opening a booked session straight into a workout.

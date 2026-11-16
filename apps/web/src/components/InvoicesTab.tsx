@@ -24,7 +24,7 @@ import {
   type InvoiceSettings,
   type PayMethod,
 } from '@pt/core';
-import type { ClientRate, InvoicesApi } from '../data/invoices.ts';
+import type { ClientRate, InvoicesApi, PaymentSettings } from '../data/invoices.ts';
 import { copyText } from '../lib/clipboard.ts';
 import { pdfModelFromInvoice, saveInvoicePdf } from '../lib/invoicePdf.ts';
 import { ConfirmButton } from './ConfirmButton.tsx';
@@ -127,15 +127,37 @@ export function InvoicesTab({ api, clients, say }: Props) {
   const [error, setError] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [payCfg, setPayCfg] = useState<PaymentSettings | null>(null);
+  const [payForm, setPayForm] = useState({
+    enabled: false,
+    sandbox: true,
+    merchantId: '',
+    merchantKey: '',
+    passphrase: '',
+  });
+  const [payError, setPayError] = useState('');
   const [payFor, setPayFor] = useState<{ id: string; method: PayMethod; date: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!api) return;
     try {
-      const [l, s, r] = await Promise.all([api.list(), api.settings(), api.rates()]);
+      const [l, s, r, ps] = await Promise.all([
+        api.list(),
+        api.settings(),
+        api.rates(),
+        api.paymentSettings(),
+      ]);
       setList(l);
       setSettings(s);
       setRates(r);
+      setPayCfg(ps);
+      setPayForm({
+        enabled: ps.enabled,
+        sandbox: ps.sandbox,
+        merchantId: ps.merchantId,
+        merchantKey: '',
+        passphrase: '',
+      });
       setError('');
     } catch (err) {
       setError(`Could not load invoices: ${err instanceof Error ? err.message : String(err)}`);
@@ -187,6 +209,17 @@ export function InvoicesTab({ api, clients, say }: Props) {
     if (!parsed.success) return setSettingsError(parsed.error.issues.map((i) => i.message).join(' '));
     setSettingsError('');
     await run(() => api!.saveSettings(parsed.data), 'Invoice settings saved.');
+  }
+
+  async function savePayments() {
+    if (payForm.enabled && !payForm.merchantId.trim()) return setPayError('Enter your PayFast merchant ID.');
+    if (payForm.enabled && !payForm.merchantKey.trim() && !payCfg?.hasKey)
+      return setPayError('Enter your PayFast merchant key.');
+    setPayError('');
+    await run(
+      () => api!.savePaymentSettings(payForm),
+      payForm.enabled ? 'Online payment settings saved.' : 'Online payment is switched off.',
+    );
   }
 
   async function generate() {
@@ -527,6 +560,78 @@ export function InvoicesTab({ api, clients, say }: Props) {
           ))}
           {!rates.length && <li className="sub">No clients yet.</li>}
         </ul>
+      </details>
+
+      <details className="card" aria-label="Online payments">
+        <summary>
+          <strong>Online payments (PayFast)</strong>
+          {payCfg?.enabled ? <span className="chipst">{payCfg.sandbox ? 'On, test mode' : 'On'}</span> : null}
+        </summary>
+        <p className="sub">
+          Clients can pay an invoice by card or instant EFT through your own PayFast account. The money goes
+          straight to you. PayFast charges you a fee on each payment: see their current pricing. Start in test
+          mode (the PayFast sandbox) to try it with no real money, then switch it off for live payments.
+        </p>
+        <label className="chk">
+          <input
+            type="checkbox"
+            checked={payForm.enabled}
+            onChange={(e) => setPayForm({ ...payForm, enabled: e.target.checked })}
+          />
+          Let clients pay invoices online
+        </label>
+        <label className="chk">
+          <input
+            type="checkbox"
+            checked={payForm.sandbox}
+            onChange={(e) => setPayForm({ ...payForm, sandbox: e.target.checked })}
+          />
+          Test mode (no real money)
+        </label>
+        <div className="fields">
+          <label>
+            PayFast merchant ID
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={40}
+              value={payForm.merchantId}
+              onChange={(e) => setPayForm({ ...payForm, merchantId: e.target.value })}
+            />
+          </label>
+          <label>
+            PayFast merchant key
+            <input
+              type="password"
+              autoComplete="off"
+              maxLength={80}
+              value={payForm.merchantKey}
+              placeholder={payCfg?.hasKey ? 'Saved: type to replace' : ''}
+              onChange={(e) => setPayForm({ ...payForm, merchantKey: e.target.value })}
+            />
+          </label>
+          <label className="wide">
+            PayFast passphrase (must be the same as in your PayFast settings)
+            <input
+              type="password"
+              autoComplete="off"
+              maxLength={100}
+              value={payForm.passphrase}
+              placeholder={payCfg?.hasPassphrase ? 'Saved: type to replace' : ''}
+              onChange={(e) => setPayForm({ ...payForm, passphrase: e.target.value })}
+            />
+          </label>
+        </div>
+        {payError && (
+          <p role="alert" className="err">
+            {payError}
+          </p>
+        )}
+        <div className="btnrow">
+          <button type="button" className="btn primary" disabled={busy} onClick={() => void savePayments()}>
+            Save online payment settings
+          </button>
+        </div>
       </details>
 
       <details className="card" aria-label="Invoice settings">

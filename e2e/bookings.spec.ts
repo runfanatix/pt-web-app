@@ -128,3 +128,26 @@ test('the calendar fits a phone and its buttons are big enough', async ({ page }
   const box = (await page.getByRole('gridcell').first().boundingBox())!;
   expect(box.height).toBeGreaterThanOrEqual(44);
 });
+
+test('the trainer switches on reminders; the client sees the choice and can turn it off', async ({
+  page,
+  browser,
+}) => {
+  await clientAndInvite(page);
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await page.getByText('Automatic reminders').click();
+  await page.getByLabel('Email my clients a reminder before their sessions').check();
+  await page.getByLabel('How long before').selectOption({ value: '12' });
+  await page.getByRole('button', { name: 'Save reminder settings' }).click();
+  await expect(page.getByText('Reminders are on: 12 hours before.')).toBeVisible();
+  expect(mock.profile).toMatchObject({ session_reminders: true, reminder_hours: 12 });
+
+  const ctx = await browser.newContext({ viewport: page.viewportSize() });
+  const client = await ctx.newPage();
+  await signInWithBedfordview(client, mock);
+  await client.goto('/portal');
+  await client.getByRole('tab', { name: 'My sessions' }).click();
+  // the client has no email address on file in this test, so the choice is shown but cannot be ticked
+  await expect(client.getByText(/has no email address for you/)).toBeVisible();
+  await ctx.close();
+});

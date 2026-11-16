@@ -58,6 +58,6 @@ always follow its lines (VAT on the subtotal); only a draft's lines can change. 
 When a client is erased the invoices stay (tax records are kept for five years) with the name and email as they were.
 
 ## Not built yet
-- Taking payment online (card, instant EFT): needs a provider and its agreement. The payment link field is the bridge.
+- More online payment providers: PayFast is built (Phase 11b); the provider is a setting so others can be added.
 - Credit notes, part payments, packages and session credits, and a tax invoice format with VAT numbers.
 - Reminders for overdue invoices.

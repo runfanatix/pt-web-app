@@ -96,6 +96,8 @@ function fakeApi(initial: Booking[] = []) {
     remove: vi.fn(async (id: string) => {
       rows = rows.filter((b) => b.id !== id);
     }),
+    reminderSettings: vi.fn(async () => ({ enabled: false, hours: 24 })),
+    saveReminderSettings: vi.fn(async () => {}),
   };
   return { api, created };
 }

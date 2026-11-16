@@ -21,6 +21,24 @@ export interface ClientRate {
   rateCents: number | null;
 }
 
+export interface PaymentSettings {
+  enabled: boolean;
+  /** Test mode: payments go to PayFast's sandbox and no real money moves. */
+  sandbox: boolean;
+  merchantId: string;
+  /** The secrets are never sent back to the screen: only whether they are saved. */
+  hasKey: boolean;
+  hasPassphrase: boolean;
+}
+export interface PaymentSettingsInput {
+  enabled: boolean;
+  sandbox: boolean;
+  merchantId: string;
+  /** Left blank to keep the saved one. */
+  merchantKey: string;
+  passphrase: string;
+}
+
 export interface LineInput {
   description: string;
   quantity: number;
@@ -47,6 +65,8 @@ export interface InvoicesApi {
   markUnpaid(id: string): Promise<void>;
   /** Emails the invoice (Resend, through an Edge Function). False when email is not set up or failed. */
   email(id: string): Promise<boolean>;
+  paymentSettings(): Promise<PaymentSettings>;
+  savePaymentSettings(s: PaymentSettingsInput): Promise<void>;
   removeDraft(id: string): Promise<void>;
 }
 
@@ -157,6 +177,42 @@ export function createInvoicesApi(client: SupabaseClient, trainerId: string): In
         return false;
       }
     },
+    async paymentSettings() {
+      const { data, error } = await client
+        .from('payment_settings')
+        .select('enabled, sandbox, merchant_id, merchant_key, passphrase')
+        .eq('trainer_id', trainerId)
+        .maybeSingle();
+      fail(error);
+      const r = data as {
+        enabled: boolean;
+        sandbox: boolean;
+        merchant_id: string;
+        merchant_key: string;
+        passphrase: string;
+      } | null;
+      return {
+        enabled: r?.enabled ?? false,
+        sandbox: r?.sandbox ?? true,
+        merchantId: r?.merchant_id ?? '',
+        hasKey: !!r?.merchant_key,
+        hasPassphrase: !!r?.passphrase,
+      };
+    },
+    async savePaymentSettings(s) {
+      const row: Record<string, unknown> = {
+        trainer_id: trainerId,
+        provider: 'payfast',
+        enabled: s.enabled,
+        sandbox: s.sandbox,
+        merchant_id: s.merchantId.trim(),
+        updated_at: new Date().toISOString(),
+      };
+      if (s.merchantKey.trim()) row.merchant_key = s.merchantKey.trim();
+      if (s.passphrase.trim()) row.passphrase = s.passphrase.trim();
+      const { error } = await client.from('payment_settings').upsert(row, { onConflict: 'trainer_id' });
+      fail(error);
+    },
     async removeDraft(id) {
       const { error } = await client.from('invoices').delete().eq('id', id).eq('status', 'draft');
       fail(error);
@@ -165,8 +221,13 @@ export function createInvoicesApi(client: SupabaseClient, trainerId: string): In
 }
 
 /** The client's side: their own sent and paid invoices. */
+/** The signed form to post to PayFast; or, in the offline demo, a pretend payment that has already happened. */
+export type PayOnlineResult = { url: string; fields: Record<string, string> } | { demo: true };
+
 export interface PortalInvoicesApi {
   list(): Promise<PortalInvoice[]>;
+  /** Asks the server to prepare an online payment for this invoice. */
+  payOnline(invoiceId: string): Promise<PayOnlineResult>;
 }
 export function createPortalInvoicesApi(client: SupabaseClient): PortalInvoicesApi {
   return {
@@ -174,6 +235,15 @@ export function createPortalInvoicesApi(client: SupabaseClient): PortalInvoicesA
       const { data, error } = await client.rpc('portal_invoices');
       if (error) throw new Error(error.message);
       return parsePortalInvoices(data);
+    },
+    async payOnline(invoiceId) {
+      const { data, error } = await client.functions.invoke('payfast-checkout', { body: { invoiceId } });
+      if (error) throw new Error('Online payment is not available right now. Please pay by EFT instead.');
+      const r = data as { url?: string; fields?: Record<string, string>; demo?: boolean } | null;
+      if (r?.demo) return { demo: true };
+      if (!r?.url || !r.fields)
+        throw new Error('Online payment is not available right now. Please pay by EFT instead.');
+      return { url: r.url, fields: r.fields };
     },
   };
 }

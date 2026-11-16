@@ -127,3 +127,41 @@ test('the invoices screen fits a phone and its buttons are big enough', async ({
   const box = (await page.getByRole('button', { name: /^Make the .* invoices$/ }).boundingBox())!;
   expect(box.height).toBeGreaterThanOrEqual(44);
 });
+
+test('with PayFast switched on the client gets a pay button (the mock stands in for PayFast)', async ({
+  page,
+  browser,
+}) => {
+  await clientAndInvite(page);
+  await bookNextMonth(page);
+  await page.getByRole('tab', { name: 'Invoices' }).click();
+  await page.getByText('Rates per client').click();
+  await page.getByLabel('Rate for Dan Dillon').fill('450');
+  await page.getByLabel('Rate for Dan Dillon').blur();
+  await expect(page.getByText('Rate saved for Dan Dillon.')).toBeVisible();
+  await page.getByText(/^Online payments \(PayFast\)/).click();
+  await page.getByLabel('Let clients pay invoices online').check();
+  await page.getByLabel('PayFast merchant ID').fill('10000100');
+  await page.getByLabel('PayFast merchant key').fill('46f0cd694581a');
+  await page.getByLabel(/PayFast passphrase/).fill('my phrase');
+  await page.getByRole('button', { name: 'Save online payment settings' }).click();
+  await expect(page.getByText('Online payment settings saved.')).toBeVisible();
+  await page.getByRole('button', { name: /^Make the .* invoices$/ }).click();
+  await expect(page.getByText('Made 1 invoice as drafts.')).toBeVisible();
+  await page.getByRole('button', { name: 'Send to client' }).click();
+  await expect(page.getByText(/emailed to dan@example.com/)).toBeVisible();
+
+  const ctx = await browser.newContext({ viewport: page.viewportSize() });
+  const client = await ctx.newPage();
+  await signInWithBedfordview(client, mock);
+  await client.goto('/portal');
+  await client.getByRole('tab', { name: 'My invoices' }).click();
+  await client.getByRole('button', { name: /^Pay R1.800,00 now/ }).click();
+  await expect(client.getByText(/Demo: payment received/)).toBeVisible();
+  await expect(client.getByText(/You owe/)).toHaveCount(0);
+  expect(mock.invoices[0]).toMatchObject({ status: 'paid', paid_method: 'card' });
+  // the secrets never reached the client's page
+  const html = await client.content();
+  for (const secret of ['46f0cd694581a', 'my phrase']) expect(html).not.toContain(secret);
+  await ctx.close();
+});

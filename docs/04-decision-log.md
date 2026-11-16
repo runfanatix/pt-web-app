@@ -159,3 +159,23 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **VAT is a single percentage on the subtotal** (0 by default, since many trainers are not VAT-registered). A proper tax invoice with VAT numbers is not built.
 - **Invoices outlive the client**: erasing a client keeps their invoices for tax records, with the name and email as they were.
 - **Money is whole cents** everywhere; amounts show in South African style (R1 800,00).
+
+## Phase 11b decisions (online payments)
+
+- **Owner's choice (2026-11-24): PayFast**, "with the option to change later". The provider is a column on the payment settings and the PayFast code is a self-contained module, so a second provider is an addition, not a rewrite.
+- **Each trainer uses their own PayFast account.** The money goes straight from the client to the trainer; the app never holds it. The trainer's merchant key and passphrase are stored in a table only that trainer can read; they are never in a client's page or in the portal's data (a test checks this).
+- **The payment form is signed on the server** (the passphrase must stay secret), by a function that first checks, as the signed-in client, that the invoice is theirs, is waiting to be paid, and that online payment is on.
+- **A payment only counts when five things hold**: the signature matches, the status is COMPLETE, it names the trainer's own merchant ID, PayFast itself confirms it when asked, and the amount equals the invoice total to the cent. A wrong amount is recorded for the trainer to see but does not mark the invoice paid. The same payment reported twice does nothing, and an invoice can never be paid twice.
+- **The notification address needs no PayFast setup**: it is sent with each payment. Only the passphrase has to match what the trainer set in PayFast.
+- **Test mode is the default** (PayFast's sandbox), so the trainer can try the whole thing with no real money.
+- **The earlier "payment link" field and bank details stay**, so a client can always pay by EFT if online payment is off or fails.
+- **Not tested against PayFast itself**: the signing and checking are tested against Node's own MD5 and the documented rules, but a real sandbox payment is the owner's first step (docs/12-go-live.md).
+
+## Phase 10b decisions (automatic session reminders)
+
+- **Email only for now**, through Resend, because email is set up. WhatsApp and SMS need a provider and per-message cost; the trainer's one-tap WhatsApp reminder stays.
+- **The trainer chooses the lead time** (2, 12, 24 or 48 hours) and can switch reminders off. Reminders are a service message about a booking, not marketing, so they do not depend on the marketing consent; a client can still turn them off for themselves, and every reminder says how.
+- **Once per session, safely**: the database marks a session as reminded in the same step that picks it, so overlapping runs never double-send; a failed email releases it for the next run. Moving a session resets it.
+- **Who is skipped**: cancelled and missed sessions, sessions the client has said they cannot make, clients with no email address, clients who turned reminders off, and sessions starting in under 30 minutes (too late to help).
+- **The reminder carries a calendar file** so the session lands in the client's own calendar, and tells them who to contact if they cannot come.
+- **Only the scheduler can trigger sending**: the function answers only the service key (or an optional shared secret), and the database functions behind it are service-role only.

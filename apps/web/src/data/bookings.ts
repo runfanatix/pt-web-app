@@ -3,6 +3,11 @@ import {
   BOOKINGS_SELECT,
   parseBookings,
   parsePortalBookings,
+  parseReminderPrefs,
+  reminderSettingsFromRow,
+  REMINDER_SELECT,
+  type ReminderPref,
+  type ReminderSettings,
   type Booking,
   type BookingRowInput,
   type BookingStatus,
@@ -31,6 +36,8 @@ export interface BookingsApi {
   /** Cancels a repeating series from a moment on (the session at that moment included). */
   cancelSeriesFrom(seriesId: string, fromIso: string): Promise<void>;
   remove(id: string): Promise<void>;
+  reminderSettings(): Promise<ReminderSettings>;
+  saveReminderSettings(s: ReminderSettings): Promise<void>;
 }
 
 const fail = (e: { message: string } | null) => {
@@ -72,6 +79,22 @@ export function createBookingsApi(client: SupabaseClient, trainerId: string): Bo
       const { error } = await client.from('bookings').delete().eq('id', id);
       fail(error);
     },
+    async reminderSettings() {
+      const { data, error } = await client
+        .from('trainers')
+        .select(REMINDER_SELECT)
+        .eq('id', trainerId)
+        .maybeSingle();
+      fail(error);
+      return reminderSettingsFromRow(data);
+    },
+    async saveReminderSettings(s) {
+      const { error } = await client
+        .from('trainers')
+        .update({ session_reminders: s.enabled, reminder_hours: s.hours })
+        .eq('id', trainerId);
+      fail(error);
+    },
   };
 }
 
@@ -79,6 +102,8 @@ export function createBookingsApi(client: SupabaseClient, trainerId: string): Bo
 export interface PortalBookingsApi {
   list(): Promise<PortalBooking[]>;
   respond(id: string, response: 'confirmed' | 'declined'): Promise<boolean>;
+  reminderPrefs(): Promise<ReminderPref[]>;
+  setReminders(clientId: string, on: boolean): Promise<boolean>;
 }
 
 export function createPortalBookingsApi(client: SupabaseClient): PortalBookingsApi {
@@ -93,6 +118,16 @@ export function createPortalBookingsApi(client: SupabaseClient): PortalBookingsA
         p_booking_id: id,
         p_response: response,
       });
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
+    async reminderPrefs() {
+      const { data, error } = await client.rpc('portal_reminder_prefs');
+      if (error) throw new Error(error.message);
+      return parseReminderPrefs(data);
+    },
+    async setReminders(clientId, on) {
+      const { data, error } = await client.rpc('portal_set_reminders', { p_client_id: clientId, p_on: on });
       if (error) throw new Error(error.message);
       return data === true;
     },
