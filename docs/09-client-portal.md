@@ -55,9 +55,20 @@ description, with the same answers as before).
 The name and logo are placeholders in `packages/core/src/portal.ts` (`BRAND`) and the email wording in
 `supabase/functions/_shared/invite-email.ts`. Change them there when the brand exists.
 
+## Clients running their own workouts (Phase 9b)
+
+Open a programme and press **Start workout**: the same run bar, rest countdown, live plan and wake lock the trainer
+has. Finishing saves the workout for that client under their trainer (it appears in the trainer's Past runs, marked
+"done by the client"). Under **My workouts** the client sees their own workouts and any their trainer recorded, and
+can delete the ones they did themselves (two taps). A workout that never started is not saved.
+
+Rules in the database (`20261121090000_client_runs.sql`): a client can save only to their own programme; a saved run
+uses the programme's gym (machines from another gym are not linked); the same id saves over itself (finish, undo,
+finish); numbers are clamped; at most 100 exercises; a client's record is kept five years from their last workout.
+Run the migration in the SQL editor (safe to run twice).
+
 ## Not built yet
 
-- Clients running their own workouts and saving results (Phase 9b).
 - A client changing their own contact details.
 - Notifications when a trainer assigns a new programme.
 - Two-step sign-in for trainers (see docs/07-privacy-popia.md).

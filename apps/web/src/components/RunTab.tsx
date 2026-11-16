@@ -266,7 +266,8 @@ function HistoryList({
                 <strong>{r.title}</strong>
                 <span className="sub">
                   {r.date}
-                  {r.clientName ? ` · ${r.clientName}` : ''} · {fmtClock(r.totalMs)} · {r.doneN}/
+                  {r.clientName ? ` · ${r.clientName}` : ''}
+                  {r.byClient ? ' · done by the client' : ''} · {fmtClock(r.totalMs)} · {r.doneN}/
                   {r.steps.length} done
                 </span>
               </summary>

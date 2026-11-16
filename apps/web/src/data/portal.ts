@@ -1,8 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  parsePortalHistory,
   parsePortalOverview,
   parseSharedProgramme,
+  portalRunPayload,
+  type HistoryEntry,
   type PortalOverview,
+  type PortalWorkout,
   type PortalRequestKind,
   type SharedProgramme,
 } from '@pt/core';
@@ -14,6 +18,12 @@ export interface PortalApi {
   /** Withdraws one consent. False if there was nothing to withdraw. */
   withdraw(clientId: string, purpose: string, detail: string): Promise<boolean>;
   request(clientId: string, kind: PortalRequestKind, note: string): Promise<boolean>;
+  /** Saves a finished workout for the programme's client. Saving the same id again replaces it. */
+  saveRun(programmeId: string, entry: HistoryEntry): Promise<boolean>;
+  /** The person's workouts (their own and their trainer's records), newest first. */
+  history(): Promise<PortalWorkout[]>;
+  /** Deletes a workout the client did themselves. */
+  deleteRun(id: string): Promise<boolean>;
 }
 
 export function createPortalApi(client: SupabaseClient): PortalApi {
@@ -34,6 +44,24 @@ export function createPortalApi(client: SupabaseClient): PortalApi {
         p_purpose: purpose,
         p_detail: detail,
       });
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
+    async saveRun(programmeId, entry) {
+      const { data, error } = await client.rpc('portal_save_run', {
+        p_programme_id: programmeId,
+        p_run: portalRunPayload(entry),
+      });
+      if (error) throw new Error(error.message);
+      return typeof data === 'string' && data.length > 0;
+    },
+    async history() {
+      const { data, error } = await client.rpc('portal_history');
+      if (error) throw new Error(error.message);
+      return parsePortalHistory(data);
+    },
+    async deleteRun(id) {
+      const { data, error } = await client.rpc('portal_delete_run', { p_run_id: id });
       if (error) throw new Error(error.message);
       return data === true;
     },

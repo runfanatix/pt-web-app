@@ -44,6 +44,8 @@ export interface HistoryEntry {
   /** Null when the gym has since been deleted. */
   gymId: string | null;
   gymName: string;
+  /** True when the client ran this workout themselves in the portal. */
+  byClient?: boolean;
 }
 
 export function isoOf(ts: number): string {
@@ -127,7 +129,7 @@ export function runLogText(r: HistoryEntry): string {
 /* ---------------------------------------------------------------- database rows */
 
 export const RUNS_SELECT =
-  'id, gym_id, client_id, client_name, gym_name, coach, title, run_date, started_at, total_ms, planned_min,' +
+  'id, gym_id, client_id, client_name, gym_name, coach, title, run_date, started_at, total_ms, planned_min, by_client,' +
   ' run_steps(n, equipment_id, machine, zone, exercise_name, sets, reps, rest, ms, done, step_order)';
 
 const StepRow = z.object({
@@ -155,6 +157,7 @@ const RunRow = z.object({
   started_at: z.string().nullable(),
   total_ms: z.coerce.number(),
   planned_min: z.number(),
+  by_client: z.boolean().optional(),
   run_steps: z.array(StepRow),
 });
 
@@ -194,6 +197,7 @@ export function historyFromRows(input: unknown): HistoryEntry[] {
         steps,
         gymId: r.gym_id,
         gymName: r.gym_name,
+        ...(r.by_client ? { byClient: true } : {}),
       };
     })
     .sort((a, b) => b.startedAt - a.startedAt);

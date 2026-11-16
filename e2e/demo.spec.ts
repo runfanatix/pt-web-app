@@ -186,4 +186,6 @@ test('client portal: invite a client, then open the client view and see only the
   await client.getByRole('button', { name: 'Open Starter' }).click();
   await expect(client.getByRole('heading', { level: 1, name: 'Starter' })).toBeVisible();
   await expect(client.getByRole('tab')).toHaveCount(0);
+  await client.getByRole('button', { name: 'Start workout' }).click();
+  await expect(client.getByRole('region', { name: 'Live workout' })).toBeVisible();
 });
