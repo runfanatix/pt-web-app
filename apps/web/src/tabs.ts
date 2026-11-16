@@ -3,6 +3,7 @@ export const TABS = [
   { id: 'session', label: 'Session' },
   { id: 'run', label: 'Run' },
   { id: 'calendar', label: 'Calendar' },
+  { id: 'invoices', label: 'Invoices' },
   { id: 'clients', label: 'Clients' },
   { id: 'catalogue', label: 'Catalogue' },
   { id: 'gyms', label: 'Gyms' },

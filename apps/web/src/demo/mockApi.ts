@@ -9,7 +9,7 @@
  * It is deliberately forgiving (no row-level security, no validation beyond what the app sends). It is NOT the
  * database: the real rules are tested against real SQL in packages/db.
  */
-import { exerciseRowsFromPlan, floorRowsFromPlan, type ImportPlan } from '@pt/core';
+import { exerciseRowsFromPlan, floorRowsFromPlan, fromIso, monthLabel, type ImportPlan } from '@pt/core';
 
 export interface StoredTemplate {
   id: string;
@@ -82,6 +82,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** Invoices with their lines, as the app reads them. */
+  invoices: Record<string, unknown>[];
   /** Booked sessions, as the app reads them. */
   bookings: Record<string, unknown>[];
   /** Portal invitations and the sign-ins they became (the mock treats the one signed-in user as every invited client). */
@@ -112,6 +114,7 @@ export function createMockDb(plan: ImportPlan): MockDb {
     invites: [],
     accounts: [],
     bookings: [],
+    invoices: [],
     layoutSaves: [],
     catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
@@ -126,6 +129,15 @@ export function createMockDb(plan: ImportPlan): MockDb {
       payment_provider: '',
       messaging_provider: '',
       studio_name: '',
+      default_rate_cents: null,
+      vat_percent: 0,
+      invoice_prefix: 'INV',
+      bank_details: '',
+      payment_link: '',
+      invoice_terms: '',
+      auto_invoice: false,
+      invoice_days_before: 5,
+      auto_send: false,
     },
   };
 }
@@ -693,6 +705,155 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     );
   }
 
+  type InvLine = {
+    id: string;
+    position: number;
+    description: string;
+    quantity: number;
+    unit_cents: number;
+    amount_cents: number;
+  };
+  const linesOf = (i: Record<string, unknown>) => i.invoice_lines as InvLine[];
+  const recalc = (i: Record<string, unknown>) => {
+    for (const l of linesOf(i)) l.amount_cents = Math.round(Number(l.quantity) * l.unit_cents);
+    const sub = linesOf(i).reduce((n, l) => n + l.amount_cents, 0);
+    const vat = Math.round((sub * Number(i.vat_percent)) / 100);
+    Object.assign(i, { subtotal_cents: sub, vat_cents: vat, total_cents: sub + vat });
+  };
+
+  if (path.endsWith('/rest/v1/invoices')) {
+    const id = eqParam(url, 'id');
+    if (method === 'PATCH') {
+      const inv = db.invoices.find((i) => i.id === id);
+      if (inv) Object.assign(inv, body as Record<string, unknown>);
+      return empty();
+    }
+    if (method === 'DELETE') {
+      db.invoices = db.invoices.filter((i) => !(i.id === id && i.status === 'draft'));
+      return empty();
+    }
+    return json(
+      [...db.invoices].sort((a, b) => String(b.period_start).localeCompare(String(a.period_start))),
+    );
+  }
+
+  if (path.endsWith('/rest/v1/invoice_lines')) {
+    const id = eqParam(url, 'id');
+    const owner = (lineId: string) => db.invoices.find((i) => linesOf(i).some((l) => l.id === lineId));
+    if (method === 'POST') {
+      const b = body as Record<string, unknown>;
+      const inv = db.invoices.find((i) => i.id === b.invoice_id);
+      if (!inv || inv.status !== 'draft')
+        return { status: 400, body: { message: 'Only a draft invoice can be changed.' } };
+      linesOf(inv).push({
+        id: `ln-${Math.random().toString(36).slice(2)}`,
+        position: Number(b.position),
+        description: String(b.description),
+        quantity: Number(b.quantity),
+        unit_cents: Number(b.unit_cents),
+        amount_cents: 0,
+      });
+      recalc(inv);
+      return empty(201);
+    }
+    const inv = owner(id);
+    if (!inv) return empty();
+    if (inv.status !== 'draft')
+      return { status: 400, body: { message: 'Only a draft invoice can be changed.' } };
+    if (method === 'PATCH')
+      Object.assign(
+        linesOf(inv).find((l) => l.id === id)!,
+        body as Record<string, unknown>,
+      );
+    if (method === 'DELETE') inv.invoice_lines = linesOf(inv).filter((l) => l.id !== id);
+    recalc(inv);
+    return empty();
+  }
+
+  if (path.endsWith('/rest/v1/rpc/generate_invoices')) {
+    const month = `${String((body as { p_month: string }).p_month).slice(0, 7)}-01`;
+    const rate0 = profile.default_rate_cents as number | null;
+    const out = {
+      month,
+      generated: 0,
+      invoice_ids: [] as string[],
+      skipped_no_rate: [] as string[],
+      skipped_existing: 0,
+      skipped_no_sessions: 0,
+    };
+    for (const c of [...clients].sort((a, b) => String(a.name).localeCompare(String(b.name)))) {
+      const mine = db.bookings.filter(
+        (b) =>
+          b.client_id === c.id &&
+          ['scheduled', 'completed'].includes(String(b.status)) &&
+          fromIso(String(b.starts_at)).date.slice(0, 7) === month.slice(0, 7),
+      );
+      if (!mine.length) {
+        out.skipped_no_sessions += 1;
+        continue;
+      }
+      if (db.invoices.some((i) => i.client_id === c.id && i.period_start === month && i.status !== 'void')) {
+        out.skipped_existing += 1;
+        continue;
+      }
+      const rate = (c.rate_cents as number | null | undefined) ?? rate0;
+      if (rate === null || rate === undefined) {
+        out.skipped_no_rate.push(String(c.name));
+        continue;
+      }
+      const prefix = `${profile.invoice_prefix}-${month.slice(0, 7).replace('-', '')}-`;
+      const seq = db.invoices.filter((i) => String(i.number).startsWith(prefix)).length + 1;
+      const today = new Date().toISOString().slice(0, 10);
+      const inv: Record<string, unknown> = {
+        id: `inv-${db.invoices.length + 1}`,
+        client_id: c.id,
+        client_name: c.name,
+        client_email: c.email ?? '',
+        number: `${prefix}${String(seq).padStart(3, '0')}`,
+        period_start: month,
+        issued_on: today,
+        due_on: today > month ? today : month,
+        status: 'draft',
+        vat_percent: profile.vat_percent,
+        subtotal_cents: 0,
+        vat_cents: 0,
+        total_cents: 0,
+        notes: `Sessions: ${mine.map((b) => `${fromIso(String(b.starts_at)).date} ${fromIso(String(b.starts_at)).time}`).join(', ')}`,
+        auto_generated: false,
+        email_queued_at: null,
+        emailed_at: null,
+        paid_at: null,
+        paid_method: null,
+        invoice_lines: [],
+      };
+      const kinds = new Map<string, number>();
+      for (const b of mine) kinds.set(String(b.title), (kinds.get(String(b.title)) ?? 0) + 1);
+      let pos = 0;
+      for (const [title, qty] of kinds)
+        linesOf(inv).push({
+          id: `ln-${Math.random().toString(36).slice(2)}`,
+          position: pos++,
+          description: `${title}, ${monthLabel(month)}`,
+          quantity: qty,
+          unit_cents: rate,
+          amount_cents: 0,
+        });
+      recalc(inv);
+      db.invoices.push(inv);
+      out.generated += 1;
+      out.invoice_ids.push(String(inv.id));
+    }
+    return json(out);
+  }
+
+  if (path.endsWith('/functions/v1/send-invoice')) {
+    const inv = db.invoices.find((i) => i.id === (body as { invoiceId: string }).invoiceId);
+    if (!inv) return { status: 404, body: { error: 'That invoice is not available.' } };
+    inv.emailed_at = new Date().toISOString();
+    inv.email_queued_at = null;
+    return json({ sent: true });
+  }
+
   const myClient = (clientId: unknown) =>
     clients.find((c) => c.id === clientId && db.accounts.some((a) => a.client_id === c.id && !a.revoked_at));
 
@@ -803,6 +964,43 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
       return json(false);
     row.client_response = b.p_response;
     return json(true);
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_invoices')) {
+    return json(
+      db.invoices
+        .filter((i) => i.client_id && myClient(i.client_id) && ['sent', 'paid'].includes(String(i.status)))
+        .map((i) => ({
+          id: i.id,
+          client_id: i.client_id,
+          number: i.number,
+          period_start: i.period_start,
+          issued_on: i.issued_on,
+          due_on: i.due_on,
+          status: i.status,
+          vat_percent: i.vat_percent,
+          subtotal_cents: i.subtotal_cents,
+          vat_cents: i.vat_cents,
+          total_cents: i.total_cents,
+          notes: i.notes,
+          paid_at: i.paid_at,
+          trainer: {
+            business_name: profile.business_name,
+            address: profile.address,
+            contact_email: profile.contact_email,
+            contact_phone: profile.contact_phone,
+            bank_details: profile.bank_details,
+            payment_link: profile.payment_link,
+            terms: profile.invoice_terms,
+          },
+          lines: linesOf(i).map((l) => ({
+            description: l.description,
+            quantity: l.quantity,
+            unit_cents: l.unit_cents,
+            amount_cents: l.amount_cents,
+          })),
+        })),
+    );
   }
 
   if (path.endsWith('/rest/v1/rpc/portal_withdraw_consent')) {
