@@ -17,5 +17,6 @@ export * from './layout-zones.ts';
 export * from './layout-clone.ts';
 export * from './catalogue.ts';
 export * from './portal.ts';
+export * from './library.ts';
 export * from './calendar.ts';
 export * from './invoicing.ts';

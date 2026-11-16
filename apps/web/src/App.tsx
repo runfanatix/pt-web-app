@@ -20,6 +20,7 @@ import { PortalApp } from './portal/PortalApp.tsx';
 import { createInviteApi, type InviteApi } from './data/invites.ts';
 import { createBookingsApi, type BookingsApi } from './data/bookings.ts';
 import { createInvoicesApi, type InvoicesApi } from './data/invoices.ts';
+import { createLibraryApi, type LibraryApi } from './data/libraryApi.ts';
 
 function SetupNotice() {
   return (
@@ -59,6 +60,7 @@ function SignedIn() {
   const [inviteApi, setInviteApi] = useState<InviteApi | null>(null);
   const [bookingsApi, setBookingsApi] = useState<BookingsApi | null>(null);
   const [invoicesApi, setInvoicesApi] = useState<InvoicesApi | null>(null);
+  const [libraryApi, setLibraryApi] = useState<LibraryApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -73,6 +75,7 @@ function SignedIn() {
         setInviteApi(createInviteApi(client, id));
         setBookingsApi(createBookingsApi(client, id));
         setInvoicesApi(createInvoicesApi(client, id));
+        setLibraryApi(createLibraryApi(client, id));
       },
       (err: unknown) => {
         if (!active) return;
@@ -88,6 +91,7 @@ function SignedIn() {
         setInviteApi(null);
         setBookingsApi(null);
         setInvoicesApi(null);
+        setLibraryApi(null);
       },
     );
     return () => {
@@ -111,6 +115,7 @@ function SignedIn() {
       inviteApi={inviteApi}
       bookingsApi={bookingsApi}
       invoicesApi={invoicesApi}
+      libraryApi={libraryApi}
       onGymsChanged={state.refresh}
       onSignOut={() => void signOut()}
     />

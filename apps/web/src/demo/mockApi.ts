@@ -82,6 +82,8 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** The exercise library, as the app reads it. */
+  exercises: Record<string, unknown>[];
   /** The trainer's PayFast settings (one row, or none yet). */
   paymentSettings: Record<string, unknown> | null;
   /** Invoices with their lines, as the app reads them. */
@@ -118,6 +120,8 @@ export function createMockDb(plan: ImportPlan): MockDb {
     bookings: [],
     invoices: [],
     paymentSettings: null,
+    // the library that comes with the app: shared, so it can be linked to machines but not rewritten
+    exercises: exerciseRowsFromPlan(plan).map((x) => ({ ...x, trainer_id: null, link: '' })),
     layoutSaves: [],
     catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
@@ -338,9 +342,9 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     }
     if (method === 'DELETE') {
       const xid = eqParam(url, 'exercise_id');
-      const eid = eqParam(url, 'equipment_id');
-      const e = allMachines(db).find((m) => m.id === eid);
-      if (e) e.exercise_equipment = e.exercise_equipment.filter((l) => l.exercise_id !== xid);
+      const eids = inParam(url, 'equipment_id') ?? [eqParam(url, 'equipment_id')];
+      for (const e of allMachines(db).filter((m) => eids.includes(m.id)))
+        e.exercise_equipment = e.exercise_equipment.filter((l) => l.exercise_id !== xid);
       return empty();
     }
     const ids = inParam(url, 'equipment_id');
@@ -357,7 +361,34 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     const gid = eqParam(url, 'gym_id');
     return json(db.floors[gid || plan.gym.id] ?? []);
   }
-  if (path.endsWith('/rest/v1/exercises')) return json(exerciseRowsFromPlan(plan));
+  if (path.endsWith('/rest/v1/exercises')) {
+    const id = eqParam(url, 'id');
+    if (method === 'POST') {
+      const row = {
+        id: `ex-${db.exercises.length + 1}`,
+        trainer_id: 'trainer-1',
+        link: '',
+        ...(body as Record<string, unknown>),
+      };
+      db.exercises.push(row);
+      return json({ id: row.id });
+    }
+    if (method === 'PATCH') {
+      const x = db.exercises.find((e) => e.id === id);
+      if (x && x.trainer_id !== null) Object.assign(x, body as Record<string, unknown>);
+      return empty();
+    }
+    if (method === 'DELETE') {
+      const x = db.exercises.find((e) => e.id === id);
+      if (x && x.trainer_id !== null) {
+        db.exercises = db.exercises.filter((e) => e.id !== id);
+        for (const m of allMachines(db))
+          m.exercise_equipment = m.exercise_equipment.filter((l) => l.exercise_id !== id);
+      }
+      return empty();
+    }
+    return json(db.exercises);
+  }
 
   if (path.endsWith('/rest/v1/trainers')) {
     if (method === 'PATCH') {

@@ -44,6 +44,10 @@ export interface LibraryExercise {
   rest: number;
   cue: string;
   equipmentIds: string[];
+  /** A demo link (http or https), if the exercise has one. */
+  link?: string;
+  /** A shared exercise that came with the app: its details cannot be changed, only which machines it is linked to. */
+  builtIn?: boolean;
 }
 
 export const LEVEL_NAMES: Record<string, string> = { B: 'Beginner', I: 'Intermediate', A: 'Advanced' };

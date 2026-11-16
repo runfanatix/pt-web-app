@@ -44,6 +44,8 @@ import { LayoutTab } from './components/LayoutTab.tsx';
 import { GymsTab } from './components/GymsTab.tsx';
 import { CalendarTab } from './components/CalendarTab.tsx';
 import { InvoicesTab } from './components/InvoicesTab.tsx';
+import { LibraryTab } from './components/LibraryTab.tsx';
+import type { LibraryApi } from './data/libraryApi.ts';
 import type { InvoicesApi } from './data/invoices.ts';
 import type { BookingsApi } from './data/bookings.ts';
 import type { InviteApi } from './data/invites.ts';
@@ -79,6 +81,7 @@ interface Props {
   inviteApi?: InviteApi | null;
   bookingsApi?: BookingsApi | null;
   invoicesApi?: InvoicesApi | null;
+  libraryApi?: LibraryApi | null;
   layoutApi?: LayoutApi | null;
   gymsApi?: GymsApi | null;
   catalogueApi?: CatalogueApi | null;
@@ -104,6 +107,7 @@ export function Planner({
   inviteApi = null,
   bookingsApi = null,
   invoicesApi = null,
+  libraryApi = null,
   layoutApi = null,
   gymsApi = null,
   catalogueApi = null,
@@ -988,6 +992,15 @@ export function Planner({
                 <p className="hint">Waiting for the floor plan…</p>
               )}
               {tab === 'invoices' && <InvoicesTab api={invoicesApi} clients={clients} say={say} />}
+              {tab === 'library' && (
+                <LibraryTab
+                  library={library}
+                  layout={savedLayout}
+                  api={libraryApi}
+                  onChanged={() => setReload((n) => n + 1)}
+                  say={say}
+                />
+              )}
               {tab === 'calendar' && (
                 <CalendarTab
                   api={bookingsApi}
@@ -1026,6 +1039,7 @@ export function Planner({
                 tab !== 'clients' &&
                 tab !== 'calendar' &&
                 tab !== 'invoices' &&
+                tab !== 'library' &&
                 tab !== 'gyms' &&
                 tab !== 'catalogue' && (
                   <p className="hint">{TABS.find((t) => t.id === tab)?.label} tab: not built yet.</p>
