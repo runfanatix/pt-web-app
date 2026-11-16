@@ -170,3 +170,12 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **Test mode is the default** (PayFast's sandbox), so the trainer can try the whole thing with no real money.
 - **The earlier "payment link" field and bank details stay**, so a client can always pay by EFT if online payment is off or fails.
 - **Not tested against PayFast itself**: the signing and checking are tested against Node's own MD5 and the documented rules, but a real sandbox payment is the owner's first step (docs/12-go-live.md).
+
+## Phase 10b decisions (automatic session reminders)
+
+- **Email only for now**, through Resend, because email is set up. WhatsApp and SMS need a provider and per-message cost; the trainer's one-tap WhatsApp reminder stays.
+- **The trainer chooses the lead time** (2, 12, 24 or 48 hours) and can switch reminders off. Reminders are a service message about a booking, not marketing, so they do not depend on the marketing consent; a client can still turn them off for themselves, and every reminder says how.
+- **Once per session, safely**: the database marks a session as reminded in the same step that picks it, so overlapping runs never double-send; a failed email releases it for the next run. Moving a session resets it.
+- **Who is skipped**: cancelled and missed sessions, sessions the client has said they cannot make, clients with no email address, clients who turned reminders off, and sessions starting in under 30 minutes (too late to help).
+- **The reminder carries a calendar file** so the session lands in the client's own calendar, and tells them who to contact if they cannot come.
+- **Only the scheduler can trigger sending**: the function answers only the service key (or an optional shared secret), and the database functions behind it are service-role only.

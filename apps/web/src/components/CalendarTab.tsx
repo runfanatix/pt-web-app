@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  REMINDER_HOURS,
   RESPONSE_LABEL,
+  type ReminderSettings,
   STATUS_LABEL,
   WEEKDAY_SHORT,
   addDays,
@@ -69,6 +71,7 @@ export function CalendarTab({ api, clients, gyms, openGymId, trainerName, say }:
   const [form, setForm] = useState<Form | null>(null);
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [rem, setRem] = useState<ReminderSettings | null>(null);
 
   const month = date.slice(0, 7);
   const [year, mon] = month.split('-').map(Number) as [number, number];
@@ -88,6 +91,9 @@ export function CalendarTab({ api, clients, gyms, openGymId, trainerName, say }:
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    api?.reminderSettings().then(setRem, () => setRem(null));
+  }, [api]);
 
   const clientName = useMemo(
     () => new Map((clients ?? []).map((r) => [r.client.id, r.client.name])),
@@ -224,6 +230,7 @@ export function CalendarTab({ api, clients, gyms, openGymId, trainerName, say }:
             {b.title}
             {b.gymId && gymName.get(b.gymId) ? ` · ${gymName.get(b.gymId)}` : ''}
             {b.seriesId ? ' · repeats weekly' : ''}
+            {b.reminderSentAt ? ' · reminder sent' : ''}
           </span>
           <span className="chipst">
             {STATUS_LABEL[b.status]}
@@ -453,6 +460,58 @@ export function CalendarTab({ api, clients, gyms, openGymId, trainerName, say }:
         {upcomingCount} upcoming session{upcomingCount === 1 ? '' : 's'} in view. Times are South African
         time.
       </p>
+
+      {rem && (
+        <details className="card" aria-label="Reminders">
+          <summary>
+            <strong>Automatic reminders</strong>
+            <span className="chipst">{rem.enabled ? `On, ${rem.hours} hours before` : 'Off'}</span>
+          </summary>
+          <p className="sub">
+            Clients are emailed a reminder before each session, with a calendar file and a way to say they
+            cannot make it. It goes to clients who have an email address on file and have not turned reminders
+            off in their portal. Cancelled sessions and sessions a client has said they cannot make are
+            skipped. Needs email to be set up (see docs/12-go-live.md).
+          </p>
+          <label className="chk">
+            <input
+              type="checkbox"
+              checked={rem.enabled}
+              onChange={(e) => setRem({ ...rem, enabled: e.target.checked })}
+            />
+            Email my clients a reminder before their sessions
+          </label>
+          <div className="fields">
+            <label>
+              How long before
+              <select value={rem.hours} onChange={(e) => setRem({ ...rem, hours: Number(e.target.value) })}>
+                {[...new Set<number>([...REMINDER_HOURS, rem.hours])]
+                  .sort((a, b) => a - b)
+                  .map((h) => (
+                    <option key={h} value={h}>
+                      {h === 24 ? '24 hours (the day before)' : `${h} hours`}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          <div className="btnrow">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={busy}
+              onClick={() =>
+                void run(
+                  () => api.saveReminderSettings(rem),
+                  rem.enabled ? `Reminders are on: ${rem.hours} hours before.` : 'Reminders are off.',
+                )
+              }
+            >
+              Save reminder settings
+            </button>
+          </div>
+        </details>
+      )}
 
       {form && (
         <section className="card" aria-label={form.id ? 'Edit session' : 'Book a session'}>

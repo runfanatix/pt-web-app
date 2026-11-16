@@ -141,6 +141,8 @@ export function createMockDb(plan: ImportPlan): MockDb {
       auto_invoice: false,
       invoice_days_before: 5,
       auto_send: false,
+      session_reminders: false,
+      reminder_hours: 24,
     },
   };
 }
@@ -362,7 +364,9 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
       Object.assign(profile, body as Record<string, unknown>);
       return empty();
     }
-    return json(sel.includes('business_name') ? profile : { id: 'trainer-1' });
+    return json(
+      sel.includes('business_name') || sel.includes('session_reminders') ? profile : { id: 'trainer-1' },
+    );
   }
 
   if (path.endsWith('/rest/v1/clients')) {
@@ -1026,6 +1030,29 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
           })),
         })),
     );
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_reminder_prefs')) {
+    return json(
+      clients
+        .filter((c) => myClient(c.id))
+        .map((c) => ({
+          client_id: c.id,
+          trainer: profile.business_name,
+          trainer_sends: !!profile.session_reminders,
+          hours: profile.reminder_hours,
+          has_email: String(c.email ?? '').trim() !== '',
+          on: c.reminders_off !== true,
+        })),
+    );
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_set_reminders')) {
+    const b = body as { p_client_id: string; p_on: boolean };
+    const c = clients.find((x) => x.id === b.p_client_id);
+    if (!c || !myClient(c.id)) return json(false);
+    c.reminders_off = !b.p_on;
+    return json(true);
   }
 
   if (path.endsWith('/rest/v1/rpc/portal_withdraw_consent')) {

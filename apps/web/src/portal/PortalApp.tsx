@@ -9,6 +9,7 @@ import {
   type PortalMembership,
   type PortalOverview,
   type PortalBooking,
+  type ReminderPref,
   type PortalInvoice,
   monthLabel,
   rand,
@@ -274,10 +275,13 @@ function InvoicesList({
 /** The person's booked sessions: what is coming up (confirm or say you cannot come) and what has been. */
 function SessionsList({ api, say }: { api: PortalBookingsApi; say: (s: string) => void }) {
   const [list, setList] = useState<PortalBooking[] | null>(null);
+  const [prefs, setPrefs] = useState<ReminderPref[]>([]);
   const [error, setError] = useState('');
   async function load() {
     try {
-      setList(await api.list());
+      const [l, p] = await Promise.all([api.list(), api.reminderPrefs()]);
+      setList(l);
+      setPrefs(p);
       setError('');
     } catch (err) {
       setError(`Could not load your sessions: ${err instanceof Error ? err.message : String(err)}`);
@@ -314,8 +318,31 @@ function SessionsList({ api, say }: { api: PortalBookingsApi; say: (s: string) =
       say(err instanceof Error ? err.message : String(err));
     }
   }
+  const reminderPrefs = prefs.filter((p) => p.trainerSends);
+  async function setReminders(p: ReminderPref, on: boolean) {
+    try {
+      await api.setReminders(p.clientId, on);
+      await load();
+      say(on ? 'Reminders are on.' : 'Reminders are off. You will not be emailed before sessions.');
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err));
+    }
+  }
   return (
     <>
+      {reminderPrefs.map((p) => (
+        <label key={p.clientId} className="chk">
+          <input
+            type="checkbox"
+            checked={p.on && p.hasEmail}
+            disabled={!p.hasEmail}
+            onChange={(e) => void setReminders(p, e.target.checked)}
+          />
+          {p.hasEmail
+            ? `Email me a reminder ${p.hours} hours before each session${prefs.length > 1 ? ` with ${p.trainerName}` : ''}`
+            : `${p.trainerName || 'Your trainer'} has no email address for you, so cannot send reminders. Ask them to add it.`}
+        </label>
+      ))}
       <section className="card" aria-label="Coming up">
         <h3>Coming up</h3>
         {coming.length ? (

@@ -85,7 +85,7 @@ In Supabase:
 
 ## 5. The email and payment functions (Supabase Edge Functions)
 
-Four small programs run on Supabase's servers. You deploy them once from your computer, in the repository folder.
+Five small programs run on Supabase's servers. You deploy them once from your computer, in the repository folder.
 
 ```
 npx supabase login
@@ -107,11 +107,13 @@ npx supabase functions deploy send-portal-invite --use-api
 npx supabase functions deploy send-invoice --use-api
 npx supabase functions deploy payfast-checkout --use-api
 npx supabase functions deploy payfast-notify --use-api --no-verify-jwt
+npx supabase functions deploy send-reminders --use-api --no-verify-jwt
 ```
 (`--use-api` means you do not need Docker.)
 
 What each does: `send-portal-invite` emails the client's portal invitation; `send-invoice` emails invoices;
-`payfast-checkout` prepares a signed PayFast payment for a client; `payfast-notify` is where PayFast reports a payment.
+`payfast-checkout` prepares a signed PayFast payment for a client; `payfast-notify` is where PayFast reports a payment;
+`send-reminders` emails clients before their sessions (it only answers the scheduler, which proves itself with the service key).
 **Tell Claude** if a command shows an error.
 
 ---
@@ -129,6 +131,12 @@ and only on the right day of the month.
 To email the invoices that the automatic run sends without checking (only if you tick that option): in Supabase,
 **Integrations > Cron > Create job**, type **Supabase Edge Function**, pick `send-invoice`, schedule daily at 05:15, method
 POST, body `{"queued": true}`. (The dashboard adds the needed key for you, so you never paste a secret into a command.)
+
+Then the reminders: in Supabase, **Integrations > Cron > Create job**, type **Supabase Edge Function**, pick
+`send-reminders`, schedule **every 30 minutes** (`*/30 * * * *`), method POST. Then, in the app, **Calendar > Automatic
+reminders**: switch it on and choose how long before (24 hours is the day before). A reminder goes to a client who has an
+email address on file and has not turned reminders off in their portal; it carries a calendar file, and sessions that are
+cancelled or that the client said they cannot make are skipped. Each session is reminded once.
 
 ---
 

@@ -141,10 +141,12 @@ export interface Booking {
   response: ClientResponse;
   cancelledBy: 'trainer' | 'client' | null;
   notes: string;
+  /** When the automatic reminder email went out, if it has. */
+  reminderSentAt?: string | null;
 }
 
 export const BOOKINGS_SELECT =
-  'id, client_id, gym_id, series_id, title, starts_at, ends_at, status, client_response, cancelled_by, notes';
+  'id, client_id, gym_id, series_id, title, starts_at, ends_at, status, client_response, cancelled_by, notes, reminder_sent_at';
 
 const Row = z.object({
   id: z.string(),
@@ -158,6 +160,7 @@ const Row = z.object({
   client_response: z.enum(['pending', 'confirmed', 'declined']),
   cancelled_by: z.enum(['trainer', 'client']).nullable(),
   notes: z.string(),
+  reminder_sent_at: z.string().nullable().optional(),
 });
 
 /** Validates rows from `bookings`, soonest first. */
@@ -176,6 +179,7 @@ export function parseBookings(raw: unknown): Booking[] {
       response: r.client_response,
       cancelledBy: r.cancelled_by,
       notes: r.notes,
+      reminderSentAt: r.reminder_sent_at ?? null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
@@ -363,4 +367,57 @@ export function parsePortalBookings(raw: unknown): PortalBooking[] {
       trainerName: r.trainer ?? '',
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+/* ---------------------------------------------------------------- automatic reminders */
+
+/** How long before a session the reminder email goes out, for the trainer to pick from. */
+export const REMINDER_HOURS = [2, 12, 24, 48] as const;
+
+export interface ReminderSettings {
+  enabled: boolean;
+  hours: number;
+}
+export const REMINDER_SELECT = 'session_reminders, reminder_hours';
+const SettingsRow = z.object({
+  session_reminders: z.boolean(),
+  reminder_hours: z.number().int().min(1).max(72),
+});
+export const reminderSettingsFromRow = (raw: unknown): ReminderSettings => {
+  const r = SettingsRow.parse(raw);
+  return { enabled: r.session_reminders, hours: r.reminder_hours };
+};
+
+const PrefRow = z.object({
+  client_id: z.string(),
+  trainer: z.string().nullable(),
+  trainer_sends: z.boolean(),
+  hours: z.number(),
+  has_email: z.boolean(),
+  on: z.boolean(),
+});
+export interface ReminderPref {
+  clientId: string;
+  trainerName: string;
+  /** The trainer has reminders switched on. */
+  trainerSends: boolean;
+  hours: number;
+  /** The trainer has an email address for this client. */
+  hasEmail: boolean;
+  /** The client wants them. */
+  on: boolean;
+}
+/** Validates what `portal_reminder_prefs` returned. */
+export function parseReminderPrefs(raw: unknown): ReminderPref[] {
+  if (raw === null || raw === undefined) return [];
+  return PrefRow.array()
+    .parse(raw)
+    .map((r) => ({
+      clientId: r.client_id,
+      trainerName: r.trainer ?? '',
+      trainerSends: r.trainer_sends,
+      hours: r.hours,
+      hasEmail: r.has_email,
+      on: r.on,
+    }));
 }
