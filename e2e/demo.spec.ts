@@ -278,3 +278,30 @@ test('invoices: next month’s sessions become an invoice the client can see', a
   await expect(client.getByText(/You owe R1.800,00/)).toBeVisible();
   await expect(client.getByText(/FNB 62000 111 222/)).toBeVisible();
 });
+
+test('library: the preloaded exercises, a new one linked to a machine, and its demo link in the pop-up', async ({
+  page,
+}) => {
+  await page.getByRole('tab', { name: 'Library' }).click();
+  await expect(page.getByRole('heading', { name: 'Exercise library' })).toBeVisible();
+  expect(await page.getByRole('list', { name: 'Exercises' }).getByRole('listitem').count()).toBeGreaterThan(
+    100,
+  );
+  await page.getByLabel('Search').fill('squat');
+  expect(await page.getByRole('list', { name: 'Exercises' }).getByRole('listitem').count()).toBeGreaterThan(
+    0,
+  );
+  await page.getByLabel('Search').fill('');
+  await page.getByRole('button', { name: 'New exercise' }).click();
+  await page.getByLabel('Name').fill('Demo deadlift');
+  await page.getByLabel('Demo link (optional)').fill('https://example.com/deadlift');
+  await page.getByLabel('legs', { exact: true }).check();
+  await page.getByRole('group', { name: 'Can be done on' }).getByRole('checkbox').first().check();
+  await page.getByRole('button', { name: 'Save exercise' }).click();
+  await expect(page.getByText('Added "Demo deadlift".')).toBeVisible();
+  await page.getByRole('tab', { name: 'Zones' }).click();
+  await page.locator('g.mk').first().click();
+  await expect(
+    page.getByRole('dialog').getByRole('link', { name: 'Watch a demo of Demo deadlift' }),
+  ).toBeVisible();
+});

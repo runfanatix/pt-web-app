@@ -179,3 +179,13 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **Who is skipped**: cancelled and missed sessions, sessions the client has said they cannot make, clients with no email address, clients who turned reminders off, and sessions starting in under 30 minutes (too late to help).
 - **The reminder carries a calendar file** so the session lands in the client's own calendar, and tells them who to contact if they cannot come.
 - **Only the scheduler can trigger sending**: the function answers only the service key (or an optional shared secret), and the database functions behind it are service-role only.
+
+## Phase 12 decisions (the Library tab)
+
+- **The preloaded list stays as the prototype had it** (111 exercises for Bedfordview, each linked to the machines that suit it) and is what a new trainer starts with. It is shared: everyone can use and link it, nobody can rewrite or delete it from the app.
+- **Links are per gym**, because machines differ between gyms. The tab shows and edits the links for the gym that is open; the filter by machine uses that gym's machines.
+- **A shared exercise can be linked, not changed.** To change one the trainer makes their own copy ("Squat (mine)"), which they can then edit, link and delete. Their own exercises are private to them.
+- **Adding many at once keeps the prototype's line format** and its rule that a name that already exists is extended (more machines and muscles, a cue only if it had none) instead of duplicated. On a shared exercise only the machine links are added.
+- **Names are unique per trainer's view** (case-insensitive): the form refuses a name that is already in the list, so the pop-ups never show two of the same exercise.
+- **Demo links must be http or https.** A link like `javascript:` is refused in the form and by the database. In the machine pop-up it opens in a new tab with no access to the app.
+- **Not built:** exercise images or videos stored in the app, copying links from one gym to another, and the Data tab.

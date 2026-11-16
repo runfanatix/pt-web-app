@@ -167,7 +167,7 @@ export function floorRowsFromPlan(plan: ImportPlan): FloorTreeRow[] {
   }));
 }
 
-export const EXERCISES_SELECT = 'id, name, muscles, level, sets, reps, rest, cue';
+export const EXERCISES_SELECT = 'id, trainer_id, name, muscles, level, sets, reps, rest, cue, link';
 
 const ExerciseRowSchema = z.object({
   id: z.string(),
@@ -178,6 +178,9 @@ const ExerciseRowSchema = z.object({
   reps: z.string(),
   rest: z.number(),
   cue: z.string(),
+  /** Null: a shared exercise that came with the app. */
+  trainer_id: z.string().nullable().optional(),
+  link: z.string().optional(),
 });
 export type ExerciseTreeRow = z.infer<typeof ExerciseRowSchema>;
 
@@ -208,7 +211,12 @@ export function libraryFromRows(exerciseRows: unknown, floorRows: unknown): Libr
       for (const e of z.equipment)
         for (const l of e.exercise_equipment)
           (machines.get(l.exercise_id) ?? machines.set(l.exercise_id, []).get(l.exercise_id)!).push(e.id);
-  return exercises.map((x) => ({ ...x, equipmentIds: machines.get(x.id) ?? [] }));
+  return exercises.map(({ trainer_id, link, ...x }) => ({
+    ...x,
+    equipmentIds: machines.get(x.id) ?? [],
+    ...(link ? { link } : {}),
+    ...(trainer_id === null ? { builtIn: true } : {}),
+  }));
 }
 
 export interface GymData {

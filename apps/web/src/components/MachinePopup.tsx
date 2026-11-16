@@ -99,6 +99,17 @@ export function MachinePopup({ equipment, place, exercises, inSession, onAdd, on
                     +
                   </span>
                 </button>
+                {x.link && (
+                  <a
+                    className="demo"
+                    href={x.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Watch a demo of ${x.name}`}
+                  >
+                    Watch demo
+                  </a>
+                )}
               </li>
             );
           })}

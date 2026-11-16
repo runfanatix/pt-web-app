@@ -22,7 +22,9 @@ select
   exists (select 1 from pg_proc where proname = 'portal_save_run')           as client_workouts,
   to_regclass('public.bookings') is not null                                 as bookings,
   exists (select 1 from pg_proc where proname = 'generate_invoices')         as invoicing,
-  to_regclass('public.payment_settings') is not null                         as online_payments;
+  to_regclass('public.payment_settings') is not null                         as online_payments,
+  exists (select 1 from information_schema.columns where table_name = 'bookings' and column_name = 'reminder_sent_at') as reminders,
+  exists (select 1 from information_schema.columns where table_name = 'exercises' and column_name = 'link') as exercise_link;
 ```
 
 Every column must say `true`. For each one that says `false`, open that migration from the repository's
@@ -38,6 +40,8 @@ Every column must say `true`. For each one that says `false`, open that migratio
 | bookings | `20261122090000_bookings.sql` |
 | invoicing | `20261123090000_invoicing.sql` |
 | online_payments | `20261124090000_online_payments.sql` |
+| reminders | `20261125090000_session_reminders.sql` |
+| exercise_link | `20261126090000_exercise_link.sql` |
 
 If a file says something "already exists", that step was done before: carry on to the next. After a run, re-run the check
 above. **Tell Claude** if any column stays false.
