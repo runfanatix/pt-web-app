@@ -35,6 +35,19 @@ export interface StoredLink {
   revoked_at?: string | null;
 }
 
+export interface StoredInvite extends Record<string, unknown> {
+  id: string;
+  client_id: string;
+  email: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+}
+export interface StoredAccount extends Record<string, unknown> {
+  id: string;
+  client_id: string;
+  revoked_at: string | null;
+}
+
 interface EqRow {
   id: string;
   exercise_equipment: { exercise_id: string }[];
@@ -69,6 +82,9 @@ export interface MockDb {
   profile: Record<string, unknown>;
   dataRequests: Record<string, unknown>[];
   shareLinks: StoredLink[];
+  /** Portal invitations and the sign-ins they became (the mock treats the one signed-in user as every invited client). */
+  invites: StoredInvite[];
+  accounts: StoredAccount[];
   /** Manufacturers with their models, shaped like the rows the app reads. */
   catalogue: {
     id: string;
@@ -91,6 +107,8 @@ export function createMockDb(plan: ImportPlan): MockDb {
     clients: [],
     dataRequests: [],
     shareLinks: [],
+    invites: [],
+    accounts: [],
     layoutSaves: [],
     catalogue: [],
     gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
@@ -506,35 +524,190 @@ export function handle(db: MockDb, plan: ImportPlan, method: string, url: URL, b
     const link = shareLinks.find((l) => l.token === p_token);
     const live = link && !link.revoked_at && (!link.expires_at || Date.parse(link.expires_at) > Date.now());
     if (!live) return json(null);
-    const client = clients.find((c) => c.programmes.some((p) => p.id === link.programme_id));
-    const programme = client?.programmes.find((p) => p.id === link.programme_id) as
-      Record<string, unknown> | undefined;
-    if (!client || !programme) return json(null);
-    const items = (programme.programme_items as Record<string, unknown>[]).map((i) => ({
-      position: i.position,
-      equipment_id: i.equipment_id,
-      exercise_name: i.exercise_name,
-      sets: i.sets,
-      reps: i.reps,
-      rest: i.rest,
-      note: i.note,
-      cue: '',
-    }));
-    const gymId = String(programme.gym_id ?? plan.gym.id);
-    const gym = (db.gyms.find((g) => g.id === gymId) ?? plan.gym) as Record<string, unknown>;
-    // Only the programme and the plan: nothing from the client's own record.
+    return json(programmeJson(db, plan, String(link.programme_id)));
+  }
+
+  if (path.endsWith('/rest/v1/client_invites')) {
+    const id = eqParam(url, 'id');
+    if (method === 'POST') {
+      const b = body as Record<string, unknown>;
+      const row: StoredInvite = {
+        id: `inv-${db.invites.length + 1}`,
+        client_id: String(b.client_id),
+        email: String(b.email),
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+        emailed_at: null,
+        accepted_at: null,
+        revoked_at: null,
+      };
+      db.invites.push(row);
+      return json({ id: row.id });
+    }
+    if (method === 'PATCH') {
+      Object.assign(db.invites.find((i) => i.id === id) ?? {}, body as Record<string, unknown>);
+      return empty();
+    }
+    const cid = eqParam(url, 'client_id');
+    return json(db.invites.filter((i) => i.client_id === cid));
+  }
+
+  if (path.endsWith('/rest/v1/client_accounts')) {
+    if (method === 'PATCH') {
+      Object.assign(
+        db.accounts.find((a) => a.id === eqParam(url, 'id')) ?? {},
+        body as Record<string, unknown>,
+      );
+      return empty();
+    }
+    const cid = eqParam(url, 'client_id');
+    return json(db.accounts.filter((a) => a.client_id === cid));
+  }
+
+  if (path.endsWith('/functions/v1/send-portal-invite')) {
+    const inv = db.invites.find((i) => i.id === (body as { inviteId: string }).inviteId);
+    if (!inv) return { status: 404, body: { error: 'That invite is not available.' } };
+    inv.emailed_at = new Date().toISOString();
+    return json({ sent: true });
+  }
+
+  // ---- the client portal: the one signed-in person is every client who has an open invite
+  if (path.endsWith('/rest/v1/rpc/portal_overview')) {
+    for (const inv of db.invites.filter(
+      (i) => !i.accepted_at && !i.revoked_at && Date.parse(String(i.expires_at)) > Date.now(),
+    )) {
+      const existing = db.accounts.find((a) => a.client_id === inv.client_id);
+      if (existing) existing.revoked_at = null;
+      else
+        db.accounts.push({
+          id: `acc-${db.accounts.length + 1}`,
+          client_id: inv.client_id,
+          created_at: new Date().toISOString(),
+          revoked_at: null,
+        });
+      inv.accepted_at = new Date().toISOString();
+    }
     return json({
-      title: programme.title,
-      notes: programme.notes,
-      assigned_at: programme.assigned_at,
-      trainer: profile.business_name,
-      gym: { name: gym.name, branch: gym.branch, address: gym.address },
-      items,
-      floors: db.floors[gymId] ?? db.floors[plan.gym.id],
+      email: 'demo@ptplanner.example',
+      memberships: db.accounts
+        .filter((a) => !a.revoked_at)
+        .flatMap((a) => {
+          const c = clients.find((x) => x.id === a.client_id);
+          if (!c) return [];
+          const latest = new Map<string, Record<string, unknown>>();
+          for (const r of c.consents) latest.set(`${r.purpose}|${r.detail ?? ''}`, r);
+          return [
+            {
+              client_id: c.id,
+              client_name: c.name,
+              trainer: {
+                business_name: profile.business_name,
+                display_name: 'Demo trainer',
+                address: profile.address,
+                contact_email: profile.contact_email,
+                contact_phone: profile.contact_phone,
+                information_officer_name: profile.information_officer_name,
+                information_officer_email: profile.information_officer_email,
+              },
+              programmes: [...c.programmes]
+                .sort((x, y) => String(y.assigned_at).localeCompare(String(x.assigned_at)))
+                .map((p) => ({
+                  id: p.id,
+                  title: p.title,
+                  assigned_at: p.assigned_at,
+                  gym: (() => {
+                    const g = db.gyms.find((q) => q.id === p.gym_id);
+                    return g ? [g.name, g.branch].filter(Boolean).join(' ') : null;
+                  })(),
+                  exercises: p.programme_items.length,
+                })),
+              consents: [...latest.values()].map((r) => ({
+                purpose: r.purpose,
+                detail: r.detail ?? '',
+                granted: r.granted !== false,
+                at: r.granted_at,
+                notice_version: r.notice_version ?? '',
+              })),
+            },
+          ];
+        }),
     });
   }
 
+  if (path.endsWith('/rest/v1/rpc/portal_programme')) {
+    const id = (body as { p_programme_id: string }).p_programme_id;
+    const mine = clients.find(
+      (c) =>
+        c.programmes.some((p) => p.id === id) &&
+        db.accounts.some((a) => a.client_id === c.id && !a.revoked_at),
+    );
+    return json(mine ? programmeJson(db, plan, id) : null);
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_withdraw_consent')) {
+    const b = body as { p_client_id: string; p_purpose: string; p_detail: string };
+    const c = clients.find((x) => x.id === b.p_client_id);
+    const last = c?.consents
+      .filter((r) => r.purpose === b.p_purpose && (r.detail ?? '') === b.p_detail)
+      .at(-1);
+    if (!c || !last || last.granted === false) return json(false);
+    c.consents.push({ ...last, granted: false, granted_at: new Date().toISOString() });
+    dataRequests.push({
+      id: `d${dataRequests.length + 1}`,
+      client_name: c.name,
+      kind: 'consent-withdrawal',
+      received_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      outcome: `Withdrawn by the client in the portal: ${b.p_purpose}`,
+    });
+    return json(true);
+  }
+
+  if (path.endsWith('/rest/v1/rpc/portal_request')) {
+    const b = body as { p_client_id: string; p_kind: string; p_note: string };
+    const c = clients.find((x) => x.id === b.p_client_id);
+    if (!c) return json(false);
+    dataRequests.push({
+      id: `d${dataRequests.length + 1}`,
+      client_name: c.name,
+      kind: b.p_kind,
+      received_at: new Date().toISOString(),
+      completed_at: null,
+      outcome: `Asked by the client in the portal. ${b.p_note}`,
+    });
+    return json(true);
+  }
+
   return json({});
+}
+
+/** What the public link and the portal show for one programme. Only the programme and the plan: nothing from the client's record. */
+function programmeJson(db: MockDb, plan: ImportPlan, programmeId: string) {
+  const client = db.clients.find((c) => c.programmes.some((p) => p.id === programmeId));
+  const programme = client?.programmes.find((p) => p.id === programmeId) as
+    Record<string, unknown> | undefined;
+  if (!client || !programme) return null;
+  const items = (programme.programme_items as Record<string, unknown>[]).map((i) => ({
+    position: i.position,
+    equipment_id: i.equipment_id,
+    exercise_name: i.exercise_name,
+    sets: i.sets,
+    reps: i.reps,
+    rest: i.rest,
+    note: i.note,
+    cue: '',
+  }));
+  const gymId = String(programme.gym_id ?? plan.gym.id);
+  const gym = (db.gyms.find((g) => g.id === gymId) ?? plan.gym) as Record<string, unknown>;
+  return {
+    title: programme.title,
+    notes: programme.notes,
+    assigned_at: programme.assigned_at,
+    trainer: db.profile.business_name,
+    gym: { name: gym.name, branch: gym.branch, address: gym.address },
+    items,
+    floors: db.floors[gymId] ?? db.floors[plan.gym.id],
+  };
 }
 
 const b64url = (o: object) =>

@@ -147,3 +147,43 @@ test('a workout can be run to the end and is saved to history', async ({ page })
   await expect(bar).toContainText('Workout finished');
   await expect(page.getByRole('list', { name: 'Past runs' })).toContainText('done');
 });
+
+test('client portal: invite a client, then open the client view and see only their programme', async ({
+  page,
+  context,
+}) => {
+  await page.getByRole('tab', { name: 'Clients' }).click();
+  await page.getByRole('button', { name: 'Your business details' }).click();
+  await page.getByLabel('Business or trainer name').fill('Demo Fitness');
+  await page.getByLabel('Physical address').fill('1 Main Rd');
+  await page.getByLabel('Contact email').fill('demo@example.com');
+  await page.getByLabel('Information Officer name').fill('Demo Officer');
+  await page.getByLabel('Information Officer email').fill('io@example.com');
+  await page.getByRole('button', { name: 'Save details' }).click();
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await page.getByRole('button', { name: 'Add client' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Sample Client');
+  await page.getByRole('button', { name: 'Continue to consent' }).click();
+  for (let i = 0; i < 3; i++) await tick(page);
+  await tick(page, false);
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await addFirstExercise(page);
+  await page.getByRole('tab', { name: 'Session (1)' }).click();
+  await page.getByLabel('Session name').fill('Starter');
+  await page.getByRole('checkbox', { name: 'Sample Client' }).check();
+  await page.getByRole('button', { name: 'Assign to selected clients' }).click();
+  await expect(page.getByText('Assigned to 1 client.')).toBeVisible();
+  await page.getByRole('tab', { name: 'Clients' }).click();
+  await page.getByRole('button', { name: /Sample Client/ }).click();
+  const panel = page.getByRole('region', { name: 'Client portal' });
+  await panel.getByLabel('Their email address').fill('client@example.com');
+  await panel.getByRole('button', { name: 'Invite to the portal' }).click();
+  await expect(panel.getByText(/Invited: waiting/)).toBeVisible();
+
+  const client = await context.newPage();
+  await client.goto(URL_ + '#/portal');
+  await expect(client.getByRole('heading', { name: 'My training' })).toBeVisible();
+  await client.getByRole('button', { name: 'Open Starter' }).click();
+  await expect(client.getByRole('heading', { level: 1, name: 'Starter' })).toBeVisible();
+  await expect(client.getByRole('tab')).toHaveCount(0);
+});

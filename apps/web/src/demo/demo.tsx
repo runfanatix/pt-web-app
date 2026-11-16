@@ -57,6 +57,16 @@ export function installDemo(): void {
     const method = (init?.method ?? req?.method ?? 'GET').toUpperCase();
     if (url.pathname.startsWith('/auth/v1/')) {
       if (url.pathname.endsWith('/logout')) return json(204);
+      if (url.pathname.endsWith('/otp')) {
+        // The demo sends no email: "emailing" a sign-in link just signs in.
+        try {
+          localStorage.setItem(AUTH_KEY, JSON.stringify(fakeSession('demo@ptplanner.example')));
+        } catch {
+          /* storage blocked: the sign-in screen stays */
+        }
+        setTimeout(() => window.location.reload(), 600);
+        return json(200, {});
+      }
       const s = fakeSession('demo@ptplanner.example');
       return url.pathname.endsWith('/user') ? json(200, s.user) : json(200, s);
     }

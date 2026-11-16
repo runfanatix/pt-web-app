@@ -361,3 +361,32 @@ code {
   font: inherit;
   cursor: pointer;
 }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.brandmark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--bg);
+  font: 700 16px var(--f-mono);
+}
+.wrap.narrow {
+  max-width: 460px;
+}
+.err {
+  color: var(--danger, #b3261e);
+}
+
+.demo-banner a {
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+}

@@ -119,3 +119,14 @@ notifications, calendar and bookings, invoicing and payments, trainer analytics,
 - **Where the model shows**: machine pop-up, Zones tab (with its specifications), Session and Run lists, the run bar, and the PDF and message text ("Chest press · Technogym Selection Chest Press"). It is not on the client's public link yet: that database function does not return catalogue data, and adding it is a change to what a visitor can see.
 - **Deleting a model or manufacturer never deletes a machine**: the machine keeps its name and loses only the link (the screen says how many machines use the model first). The layout save refuses a model the trainer cannot see.
 - **Left for later**: item images (Storage), a gym walkthrough mode to place catalogue items, and licensing of any supplier content (decision-log question 4 is still open for whoever supplies the lists).
+
+## Phase 9a decisions (client portal)
+
+- **Owner's answers (2026-11-20):** emailed sign-in links (no passwords); Resend as the mail service; clients may run their own programmes (slice 9b); a client can belong to more than one trainer; placeholder branding for now.
+- **Invites are tied to an email address, not a secret link.** The invitation email only contains the portal address. Whoever signs in with that **verified** email gets linked to the client record. This needs Supabase's "Confirm email" setting left on. A leaked invitation email is useless to anyone who cannot receive mail at the invited address.
+- **More than one trainer**: each trainer keeps their own client record for the person; one sign-in can be linked to several. The portal shows each trainer separately. Switching access off is per trainer.
+- **A client has no table access.** Everything goes through functions that return only the safe fields (never private notes, goals, other clients or other programmes). The public link and the portal share one function for describing a programme, so they cannot drift apart.
+- **A client sign-in does not create a trainer account** (user metadata role = client). Anyone can still request a sign-in link, but with no invite they see "Nothing here yet".
+- **Consent withdrawal by the client** adds a "no" record (consent records stay append-only) and logs a consent-withdrawal request for the trainer. Withdrawing a core consent warns the client first. Other requests (access, correction, deletion, objection) are logged for the trainer to answer; nothing is deleted automatically.
+- **If the invitation email cannot be sent** (Resend not set up yet) the invitation is still saved and the trainer is given the portal link to send by WhatsApp.
+- **Offline demo**: a Client view and Trainer view switch in the demo banner; in the demo, "emailing" a sign-in link simply signs in.

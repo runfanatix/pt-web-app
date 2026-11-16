@@ -1,3 +1,4 @@
+import { portalLink } from '../lib/links.ts';
 import { useState, type FormEvent } from 'react';
 import { PRIVACY_NOTICE_VERSION } from '@pt/core';
 import { useAuth } from './AuthProvider.tsx';
@@ -112,6 +113,9 @@ export function AuthScreen() {
       >
         {signup ? 'I already have an account' : 'Create a trainer account'}
       </button>
+      <p className="sub">
+        Are you a client? <a href={portalLink()}>Open your client portal</a>
+      </p>
     </div>
   );
 }

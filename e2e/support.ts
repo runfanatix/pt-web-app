@@ -60,8 +60,7 @@ const cors = {
 export const createMockDb = (): MockDb => createDb(plan);
 
 /** Signs a trainer in and serves the Bedfordview data. Data lives in memory for the page's lifetime. */
-export async function signInWithBedfordview(page: Page): Promise<MockDb> {
-  const db = createMockDb();
+export async function signInWithBedfordview(page: Page, db: MockDb = createMockDb()): Promise<MockDb> {
   // supabase-js stores the session under sb-<first label of the host>-auth-token.
   await page.addInitScript(
     (s) => localStorage.setItem('sb-127-auth-token', JSON.stringify(s)),
