@@ -1,4 +1,5 @@
 -- PT Planner: the equipment catalogue (Phase 8). A new migration: earlier ones are already applied.
+-- Safe to run more than once: every step checks first.
 --
 -- Manufacturers (Technogym, Eleiko...) and the models they make ("Selection Pin Loaded Chest Press", code, kind,
 -- muscles, specifications). The trainer fills these in by hand; rows with trainer_id null are shared ones loaded by
@@ -7,17 +8,17 @@
 --
 -- Deleting a model never deletes a machine: the machine keeps its name and just loses the link.
 
-create table public.manufacturers (
+create table if not exists public.manufacturers (
   id         uuid primary key default gen_random_uuid(),
   trainer_id uuid references public.trainers (id) on delete cascade,
   name       text not null check (char_length(btrim(name)) between 1 and 60),
   created_at timestamptz not null default now()
 );
-create unique index manufacturers_name_idx
+create unique index if not exists manufacturers_name_idx
   on public.manufacturers (coalesce(trainer_id, '00000000-0000-0000-0000-000000000000'::uuid), lower(btrim(name)));
-create index manufacturers_trainer_idx on public.manufacturers (trainer_id);
+create index if not exists manufacturers_trainer_idx on public.manufacturers (trainer_id);
 
-create table public.catalogue_items (
+create table if not exists public.catalogue_items (
   id              uuid primary key default gen_random_uuid(),
   trainer_id      uuid references public.trainers (id) on delete cascade,
   manufacturer_id uuid not null references public.manufacturers (id) on delete cascade,
@@ -30,38 +31,50 @@ create table public.catalogue_items (
   notes           text not null default '' check (char_length(notes) <= 1000),
   created_at      timestamptz not null default now()
 );
-create unique index catalogue_items_code_idx
+create unique index if not exists catalogue_items_code_idx
   on public.catalogue_items (manufacturer_id, lower(code)) where code <> '';
-create index catalogue_items_manufacturer_idx on public.catalogue_items (manufacturer_id);
-create index catalogue_items_trainer_idx on public.catalogue_items (trainer_id);
+create index if not exists catalogue_items_manufacturer_idx on public.catalogue_items (manufacturer_id);
+create index if not exists catalogue_items_trainer_idx on public.catalogue_items (trainer_id);
 
-alter table public.equipment
-  add constraint equipment_catalogue_item_fk
-  foreign key (catalogue_item_id) references public.catalogue_items (id) on delete set null;
-create index equipment_catalogue_idx on public.equipment (catalogue_item_id);
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'equipment_catalogue_item_fk') then
+    alter table public.equipment
+      add constraint equipment_catalogue_item_fk
+      foreign key (catalogue_item_id) references public.catalogue_items (id) on delete set null;
+  end if;
+end $$;
+create index if not exists equipment_catalogue_idx on public.equipment (catalogue_item_id);
 
 alter table public.manufacturers  enable row level security;
 alter table public.catalogue_items enable row level security;
 
+drop policy if exists manufacturers_select on public.manufacturers;
 create policy manufacturers_select on public.manufacturers for select to authenticated
   using (trainer_id is null or trainer_id = public.current_trainer_id());
+drop policy if exists manufacturers_insert on public.manufacturers;
 create policy manufacturers_insert on public.manufacturers for insert to authenticated
   with check (trainer_id = public.current_trainer_id());
+drop policy if exists manufacturers_update on public.manufacturers;
 create policy manufacturers_update on public.manufacturers for update to authenticated
   using (trainer_id = public.current_trainer_id()) with check (trainer_id = public.current_trainer_id());
+drop policy if exists manufacturers_delete on public.manufacturers;
 create policy manufacturers_delete on public.manufacturers for delete to authenticated
   using (trainer_id = public.current_trainer_id());
 
 -- a trainer's model may sit under their own manufacturer or a shared one (the subquery is itself row-level secured)
+drop policy if exists catalogue_items_select on public.catalogue_items;
 create policy catalogue_items_select on public.catalogue_items for select to authenticated
   using (trainer_id is null or trainer_id = public.current_trainer_id());
+drop policy if exists catalogue_items_insert on public.catalogue_items;
 create policy catalogue_items_insert on public.catalogue_items for insert to authenticated
   with check (trainer_id = public.current_trainer_id()
               and exists (select 1 from public.manufacturers m where m.id = manufacturer_id));
+drop policy if exists catalogue_items_update on public.catalogue_items;
 create policy catalogue_items_update on public.catalogue_items for update to authenticated
   using (trainer_id = public.current_trainer_id())
   with check (trainer_id = public.current_trainer_id()
               and exists (select 1 from public.manufacturers m where m.id = manufacturer_id));
+drop policy if exists catalogue_items_delete on public.catalogue_items;
 create policy catalogue_items_delete on public.catalogue_items for delete to authenticated
   using (trainer_id = public.current_trainer_id());
 
