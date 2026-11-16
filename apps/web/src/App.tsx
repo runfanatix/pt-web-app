@@ -15,7 +15,9 @@ import { createShareApi } from './data/share.ts';
 import { PublicProgramme } from './components/PublicProgramme.tsx';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
-import { currentPath } from './lib/links.ts';
+import { currentPath, isPortalPath, portalLink } from './lib/links.ts';
+import { PortalApp } from './portal/PortalApp.tsx';
+import { createInviteApi, type InviteApi } from './data/invites.ts';
 
 function SetupNotice() {
   return (
@@ -52,6 +54,7 @@ function SignedIn() {
   const [profileApi, setProfileApi] = useState<ProfileApi | null>(null);
   const [gymsApi, setGymsApi] = useState<GymsApi | null>(null);
   const [catalogueApi, setCatalogueApi] = useState<CatalogueApi | null>(null);
+  const [inviteApi, setInviteApi] = useState<InviteApi | null>(null);
   useEffect(() => {
     let active = true;
     fetchTrainerId(client).then(
@@ -63,15 +66,20 @@ function SignedIn() {
         setProfileApi(createProfileApi(client, id));
         setGymsApi(createGymsApi(client, id));
         setCatalogueApi(createCatalogueApi(client, id));
+        setInviteApi(createInviteApi(client, id));
       },
-      () => {
+      (err: unknown) => {
         if (!active) return;
+        // A sign-in with no trainer account is a client: send them to their portal.
+        if (err instanceof Error && err.message.startsWith('No trainer profile'))
+          window.location.replace(portalLink());
         setTemplates(null);
         setHistory(null);
         setClientsApi(null);
         setProfileApi(null);
         setGymsApi(null);
         setCatalogueApi(null);
+        setInviteApi(null);
       },
     );
     return () => {
@@ -92,6 +100,7 @@ function SignedIn() {
       layoutApi={layoutApi}
       gymsApi={gymsApi}
       catalogueApi={catalogueApi}
+      inviteApi={inviteApi}
       onGymsChanged={state.refresh}
       onSignOut={() => void signOut()}
     />
@@ -117,6 +126,12 @@ export function App({
   if (!client) return <SetupNotice />;
   const token = tokenFromPath(pathname);
   if (token) return <PublicProgramme client={client} token={token} />;
+  if (isPortalPath(pathname))
+    return (
+      <AuthProvider client={client}>
+        <PortalApp client={client} />
+      </AuthProvider>
+    );
   return (
     <AuthProvider client={client}>
       <Gate />

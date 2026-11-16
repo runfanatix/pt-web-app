@@ -18,9 +18,6 @@ type State =
  */
 export function PublicProgramme({ client, token }: { client: SupabaseClient; token: string }) {
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [floorId, setFloorId] = useState<string | null>(null);
-  const [selEq, setSelEq] = useState<string | null>(null);
-  const [selZone, setSelZone] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -64,7 +61,23 @@ export function PublicProgramme({ client, token }: { client: SupabaseClient; tok
     );
   }
 
-  const p = state.programme;
+  return <ProgrammeView p={state.programme} />;
+}
+
+/**
+ * One programme: the exercises, the gym plan with the numbered route, and a PDF button. Used by the public link and
+ * by the client portal, so both look exactly the same. `back` adds a "back" button above the title.
+ */
+export function ProgrammeView({
+  p,
+  back,
+}: {
+  p: SharedProgramme;
+  back?: { label: string; onClick: () => void };
+}) {
+  const [floorId, setFloorId] = useState<string | null>(null);
+  const [selEq, setSelEq] = useState<string | null>(null);
+  const [selZone, setSelZone] = useState<string | null>(null);
   const layout = p.layout;
   const floor = layout ? (layout.floors.find((f) => f.id === floorId) ?? layout.floors[0]!) : null;
   const equipById = new Map((layout?.equipment ?? []).map((e) => [e.id, e]));
@@ -117,6 +130,11 @@ export function PublicProgramme({ client, token }: { client: SupabaseClient; tok
 
   return (
     <div className="wrap public">
+      {back && (
+        <button type="button" className="btn sm" onClick={back.onClick}>
+          {back.label}
+        </button>
+      )}
       <header className="top">
         <div>
           <p className="eyebrow">

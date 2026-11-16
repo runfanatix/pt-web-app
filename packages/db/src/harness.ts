@@ -21,6 +21,7 @@ const SUPABASE_STUBS = `
   create table auth.users (
     id uuid primary key default gen_random_uuid(),
     email text,
+    email_confirmed_at timestamptz default now(),
     raw_user_meta_data jsonb not null default '{}'::jsonb
   );
   create function auth.uid() returns uuid language sql stable as $$
@@ -58,7 +59,8 @@ export async function createUser(
   );
   const userId = u.rows[0]!.id;
   const t = await db.query<{ id: string }>('select id from public.trainers where user_id = $1', [userId]);
-  return { userId, trainerId: t.rows[0]!.id, email };
+  // A person who signed in as a client (user metadata role = client) has no trainer account.
+  return { userId, trainerId: t.rows[0]?.id ?? '', email };
 }
 
 export type Query = <T = Record<string, unknown>>(sql: string, params?: unknown[]) => Promise<T[]>;

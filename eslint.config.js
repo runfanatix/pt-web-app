@@ -11,6 +11,7 @@ export default tseslint.config(
       'design-reference/**',
       'Nicks tools/**',
       'prototype/**',
+      'supabase/functions/**',
       'playwright-report/**',
       'test-results/**',
     ],

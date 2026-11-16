@@ -16,3 +16,4 @@ export * from './layout-structs.ts';
 export * from './layout-zones.ts';
 export * from './layout-clone.ts';
 export * from './catalogue.ts';
+export * from './portal.ts';

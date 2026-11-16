@@ -42,6 +42,7 @@ import { ClientsTab } from './components/clients/ClientsTab.tsx';
 import { ZonesTab } from './components/ZonesTab.tsx';
 import { LayoutTab } from './components/LayoutTab.tsx';
 import { GymsTab } from './components/GymsTab.tsx';
+import type { InviteApi } from './data/invites.ts';
 import { CatalogueTab } from './components/CatalogueTab.tsx';
 import { ModelsContext, type CatalogueApi } from './data/catalogueApi.ts';
 import type { GymMeta, GymsApi } from './data/gymsApi.ts';
@@ -71,6 +72,7 @@ interface Props {
   clientsApi?: ClientsApi | null;
   profileApi?: ProfileApi | null;
   shareApi?: ShareApi | null;
+  inviteApi?: InviteApi | null;
   layoutApi?: LayoutApi | null;
   gymsApi?: GymsApi | null;
   catalogueApi?: CatalogueApi | null;
@@ -93,6 +95,7 @@ export function Planner({
   clientsApi = null,
   profileApi = null,
   shareApi = null,
+  inviteApi = null,
   layoutApi = null,
   gymsApi = null,
   catalogueApi = null,
@@ -969,6 +972,7 @@ export function Planner({
                   onOpenProgramme={(prog, client) => void openProgramme(prog, client)}
                   say={say}
                   shareApi={shareApi}
+                  inviteApi={inviteApi}
                   shareContext={{ gymId: gym.id, gymLine, layout, library }}
                 />
               )}

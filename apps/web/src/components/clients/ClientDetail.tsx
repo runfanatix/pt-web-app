@@ -1,5 +1,7 @@
 import { useContext, useState } from 'react';
 import { ModelsContext } from '../../data/catalogueApi.ts';
+import type { InviteApi } from '../../data/invites.ts';
+import { PortalAccess } from './PortalAccess.tsx';
 import {
   ClientSchema,
   buildClientExport,
@@ -38,6 +40,7 @@ interface Props {
   onOpenProgramme: (p: ProgrammeRecord, client: { id: string; name: string }) => void;
   say: (msg: string) => void;
   shareApi?: ShareApi | null;
+  inviteApi?: InviteApi | null;
   shareContext?: ShareContext | null;
 }
 
@@ -60,6 +63,7 @@ export function ClientDetail({
   onOpenProgramme,
   say,
   shareApi = null,
+  inviteApi = null,
   shareContext = null,
 }: Props) {
   const models = useContext(ModelsContext);
@@ -423,6 +427,10 @@ export function ClientDetail({
           </ul>
         )}
       </section>
+
+      {inviteApi && (
+        <PortalAccess api={inviteApi} clientId={c.id} clientName={c.name} email={c.email} say={say} />
+      )}
 
       <section className="share" aria-label="Privacy and consent">
         <h3>Privacy and consent</h3>

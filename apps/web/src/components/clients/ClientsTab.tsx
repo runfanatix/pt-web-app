@@ -1,3 +1,4 @@
+import type { InviteApi } from '../../data/invites.ts';
 import { useEffect, useState } from 'react';
 import {
   ClientSchema,
@@ -31,6 +32,7 @@ interface Props {
   onOpenProgramme: (p: ProgrammeRecord, client: { id: string; name: string }) => void;
   say: (msg: string) => void;
   shareApi?: ShareApi | null;
+  inviteApi?: InviteApi | null;
   shareContext?: ShareContext | null;
 }
 
@@ -52,6 +54,7 @@ export function ClientsTab({
   onOpenProgramme,
   say,
   shareApi = null,
+  inviteApi = null,
   shareContext = null,
 }: Props) {
   const [view, setView] = useState<View>({ kind: 'list' });
@@ -137,6 +140,7 @@ export function ClientsTab({
         onOpenProgramme={onOpenProgramme}
         say={say}
         shareApi={shareApi}
+        inviteApi={inviteApi}
         shareContext={shareContext}
       />
     );
