@@ -15,6 +15,7 @@ import { createShareApi } from './data/share.ts';
 import { PublicProgramme } from './components/PublicProgramme.tsx';
 import { Planner } from './Planner.tsx';
 import { supabase as defaultClient } from './lib/supabase.ts';
+import { currentPath } from './lib/links.ts';
 
 function SetupNotice() {
   return (
@@ -108,7 +109,7 @@ function Gate() {
  */
 export function App({
   client = defaultClient,
-  pathname = window.location.pathname,
+  pathname = currentPath(),
 }: {
   client?: SupabaseClient | null;
   pathname?: string;

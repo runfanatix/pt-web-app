@@ -25,6 +25,10 @@ test-results/
 supabase/.branches/
 supabase/.temp/
 
+# The offline demo file made by `pnpm demo:build` (rebuild it any time)
+/demo/
+apps/web/dist-demo/
+
 # External reference repo (cloned separately, read-only)
 design-reference/
 

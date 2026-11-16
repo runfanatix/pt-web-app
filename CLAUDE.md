@@ -69,7 +69,7 @@ Useful prototype function names to search for when porting logic: `zoneLoops` (u
 ```
 CLAUDE.md                     this file
 README.md                     handoff package overview
-docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script, 06 Supabase setup, 07 privacy and POPIA
+docs/                         01 spec, 02 data model, 03 build plan, 04 decision log, 05 import script, 06 Supabase setup, 07 privacy and POPIA, 08 offline demo
 prototype/                    FROZEN reference (zone-planner-v11.html + Playwright scenarios). Never edit.
 apps/web/                     React + Vite + TypeScript app (shell only so far)
 packages/core/                pure TypeScript: Zod schemas, importer, built-in library seed, floor-plan geometry, row-to-layout mapper (remap, route order, snapshot come in later phases)
@@ -90,6 +90,7 @@ Current status: **Phases 0 to 5 are built.** Phase 5 so far (clients, consent, p
 - `pnpm install` then `pnpm dev` (http://localhost:5173); `pnpm build`; `pnpm lint`; `pnpm format:check` (`pnpm format` to fix); `pnpm typecheck`
 - `pnpm test` Vitest (core: importer, schemas, library; db: RLS and importer on real SQL; web: components); `pnpm e2e` Playwright (builds with a dummy Supabase URL on :4173; signed-out screens, plus the signed-in planner against a mocked Supabase API serving the real Bedfordview export; set `SHOTS_DIR` to save screenshots for comparing with the prototype; first time run `pnpm exec playwright install chromium`)
 - Handoff files `packages/core/src/import-prototype*.ts` and `scripts/import-prototype.ts` are deliberately excluded from Prettier; ESLint ignores unused caught errors for them. The tsconfig does not use `noUncheckedIndexedAccess` because the tested importer predates it.
+- `pnpm demo:build` makes `demo/PT-Planner-Demo.html`: the whole app in one file with a built-in mock database, for demos with no internet (see docs/08-offline-demo.md; the mock is `apps/web/src/demo/mockApi.ts`, shared with the e2e tests; `e2e/demo.spec.ts` runs against the built file)
 - `npx tsx scripts/import-prototype.ts --file exports/bedfordview-v11.json --trainer <id> --dry-run` (expect 14 zones, 41 machines)
 
 ## Claude Code tooling in this repo

@@ -5,7 +5,19 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page, Route } from '@playwright/test';
-import { exerciseRowsFromPlan, floorRowsFromPlan, planPrototypeImport } from '../packages/core/src/index.ts';
+import { planPrototypeImport } from '../packages/core/src/index.ts';
+import {
+  createMockDb as createDb,
+  fakeSession,
+  handle,
+  type MockDb,
+  type StoredClient,
+  type StoredLink,
+  type StoredRun,
+  type StoredTemplate,
+} from '../apps/web/src/demo/mockApi.ts';
+
+export type { MockDb, StoredClient, StoredLink, StoredRun, StoredTemplate };
 
 export const SUPABASE_URL = 'http://127.0.0.1:54321';
 
@@ -39,115 +51,13 @@ const multiSetMachine = bedfordview.machinesWithExercises.find((m) => {
 })!;
 export const restMachine = { id: multiSetMachine.id, exercise: linkedExercises(multiSetMachine.id)[0]! };
 
-const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
-function fakeSession() {
-  const exp = Math.floor(Date.now() / 1000) + 365 * 24 * 3600;
-  const access = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u1', role: 'authenticated', exp })}.sig`;
-  return {
-    access_token: access,
-    token_type: 'bearer',
-    expires_in: 365 * 24 * 3600,
-    expires_at: exp,
-    refresh_token: 'refresh',
-    user: {
-      id: 'u1',
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: 'pt@example.com',
-      app_metadata: {},
-      user_metadata: {},
-      created_at: new Date().toISOString(),
-    },
-  };
-}
-
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': '*',
   'access-control-allow-methods': 'GET,POST,PATCH,DELETE,OPTIONS',
 };
 
-function json(route: Route, body: unknown) {
-  return route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    headers: cors,
-    body: JSON.stringify(body),
-  });
-}
-const empty = (route: Route, status = 204) => route.fulfill({ status, headers: cors });
-
-export interface StoredTemplate {
-  id: string;
-  name: string;
-  notes: string;
-  gym_id: string;
-  template_items: Record<string, unknown>[];
-}
-
-export interface StoredClient extends Record<string, unknown> {
-  id: string;
-  consents: Record<string, unknown>[];
-  programmes: { id: string; programme_items: Record<string, unknown>[] }[] & Record<string, unknown>[];
-}
-
-export interface StoredRun extends Record<string, unknown> {
-  id: string;
-  run_steps: Record<string, unknown>[];
-}
-
-export interface StoredLink {
-  token: string;
-  programme_id: string;
-  created_at: string;
-  expires_at: string | null;
-  revoked_at: string | null;
-}
-
-/** Everything the mocked API remembers. Share one between pages to see the same data in two browser windows. */
-export interface MockDb {
-  templates: StoredTemplate[];
-  runs: StoredRun[];
-  clients: StoredClient[];
-  profile: Record<string, unknown>;
-  dataRequests: Record<string, unknown>[];
-  shareLinks: StoredLink[];
-  /** Manufacturers with their models, shaped like the rows the app reads. */
-  catalogue: {
-    id: string;
-    trainer_id: string | null;
-    name: string;
-    catalogue_items: Record<string, unknown>[];
-  }[];
-  /** The trainer's gyms (the first is the imported Bedfordview). */
-  gyms: Record<string, unknown>[];
-  /** Every layout the app sent to save_gym_layout. */
-  layoutSaves: { p_gym_id: string; p_layout: Record<string, unknown[]> }[];
-}
-
-export function createMockDb(): MockDb {
-  return {
-    templates: [],
-    runs: [],
-    clients: [],
-    dataRequests: [],
-    shareLinks: [],
-    layoutSaves: [],
-    catalogue: [],
-    gyms: [{ ...plan.gym, updated_at: '2026-11-15T00:00:00Z' }],
-    profile: {
-      business_name: '',
-      address: '',
-      contact_email: '',
-      contact_phone: '',
-      information_officer_name: '',
-      information_officer_email: '',
-      payment_provider: '',
-      messaging_provider: '',
-      studio_name: '',
-    },
-  };
-}
+export const createMockDb = (): MockDb => createDb(plan);
 
 /** Signs a trainer in and serves the Bedfordview data. Data lives in memory for the page's lifetime. */
 export async function signInWithBedfordview(page: Page): Promise<MockDb> {
@@ -163,345 +73,23 @@ export async function signInWithBedfordview(page: Page): Promise<MockDb> {
 
 /** Serves the mocked Supabase API to a page. Use on its own for a visitor who is not logged in. */
 export async function serveApi(page: Page, db: MockDb): Promise<void> {
-  const { templates, runs, clients, profile, dataRequests, shareLinks } = db;
-
-  await page.route(`${SUPABASE_URL}/**`, async (route) => {
+  await page.route(`${SUPABASE_URL}/**`, async (route: Route) => {
     const req = route.request();
     const method = req.method();
-    if (method === 'OPTIONS') return empty(route);
-    const url = new URL(req.url());
-    const path = url.pathname;
-
-    if (path.endsWith('/rest/v1/gyms')) {
-      const gid = (url.searchParams.get('id') ?? '').replace('eq.', '');
-      if (method === 'POST') {
-        const row = { ...(req.postDataJSON() as Record<string, unknown>), id: `gym-${db.gyms.length + 1}` };
-        db.gyms.push({ updated_at: new Date().toISOString(), ...row });
-        return json(route, { id: row.id });
-      }
-      if (method === 'PATCH') {
-        Object.assign(db.gyms.find((g) => g.id === gid) ?? {}, req.postDataJSON() as Record<string, unknown>);
-        return empty(route);
-      }
-      if (method === 'DELETE') {
-        const i = db.gyms.findIndex((g) => g.id === gid);
-        if (i >= 0) db.gyms.splice(i, 1);
-        return empty(route);
-      }
-      // The Gyms tab counts floors, zones and machines with a nested select.
-      if ((url.searchParams.get('select') ?? '').includes('floors(')) {
-        return json(
-          route,
-          db.gyms.map((g) => ({
-            id: g.id,
-            floors:
-              g.id === plan.gym.id
-                ? floorRowsFromPlan(plan).map((f) => ({
-                    id: f.id,
-                    zones: f.zones.map((z) => ({ id: z.id, equipment: z.equipment })),
-                  }))
-                : [{ id: 'x', zones: [] }],
-          })),
-        );
-      }
-      return json(route, db.gyms);
-    }
-    if (path.endsWith('/rest/v1/manufacturers')) {
-      const mid = (url.searchParams.get('id') ?? '').replace('eq.', '');
-      if (method === 'POST') {
-        const body = req.postDataJSON() as { name: string; trainer_id: string };
-        const row = {
-          id: `mk-${db.catalogue.length + 1}`,
-          trainer_id: body.trainer_id,
-          name: body.name,
-          catalogue_items: [],
-        };
-        db.catalogue.push(row);
-        return json(route, { id: row.id });
-      }
-      if (method === 'PATCH') {
-        Object.assign(
-          db.catalogue.find((m) => m.id === mid) ?? {},
-          req.postDataJSON() as Record<string, unknown>,
-        );
-        return empty(route);
-      }
-      if (method === 'DELETE') {
-        const i = db.catalogue.findIndex((m) => m.id === mid);
-        if (i >= 0) db.catalogue.splice(i, 1);
-        return empty(route);
-      }
-      return json(route, db.catalogue);
-    }
-    if (path.endsWith('/rest/v1/catalogue_items')) {
-      const iid = (url.searchParams.get('id') ?? '').replace('eq.', '');
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        const maker = db.catalogue.find((m) => m.id === body.manufacturer_id);
-        const row = { ...body, id: `it-${db.catalogue.flatMap((m) => m.catalogue_items).length + 1}` };
-        maker?.catalogue_items.push(row);
-        return json(route, { id: row.id });
-      }
-      if (method === 'PATCH') {
-        for (const m of db.catalogue)
-          Object.assign(
-            m.catalogue_items.find((i) => i.id === iid) ?? {},
-            req.postDataJSON() as Record<string, unknown>,
-          );
-        return empty(route);
-      }
-      if (method === 'DELETE') {
-        for (const m of db.catalogue) m.catalogue_items = m.catalogue_items.filter((i) => i.id !== iid);
-        return empty(route);
-      }
-      return json(route, []);
-    }
-    if (path.endsWith('/rest/v1/equipment')) return json(route, []);
-    if (path.endsWith('/rest/v1/exercise_equipment'))
-      return method === 'GET' ? json(route, []) : empty(route);
-    if (path.endsWith('/rest/v1/floors')) {
-      const gid = (url.searchParams.get('gym_id') ?? '').replace('eq.', '');
-      if (gid && gid !== plan.gym.id) {
-        const saved = [...db.layoutSaves].reverse().find((x) => x.p_gym_id === gid);
-        const floors = (saved?.p_layout.floors ?? []) as {
-          id: string;
-          name: string;
-          w: number;
-          h: number;
-          position: number;
-        }[];
-        return json(
-          route,
-          floors.map((f) => ({ ...f, zones: [], structs: [] })),
-        );
-      }
-      return json(route, floorRowsFromPlan(plan));
-    }
-    if (path.endsWith('/rest/v1/exercises')) return json(route, exerciseRowsFromPlan(plan));
-    if (path.endsWith('/rest/v1/trainers')) {
-      if (method === 'PATCH') {
-        Object.assign(profile, req.postDataJSON() as Record<string, unknown>);
-        return empty(route);
-      }
-      const wantsProfile = (url.searchParams.get('select') ?? '').includes('business_name');
-      return json(route, wantsProfile ? profile : { id: 'trainer-1' });
-    }
-
-    if (path.endsWith('/rest/v1/clients')) {
-      const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        const row = {
-          ...body,
-          id: `c${clients.length + 1}`,
-          created_at: new Date().toISOString(),
-          consents: [],
-          programmes: [],
-        } as StoredClient;
-        clients.push(row);
-        return json(route, { id: row.id });
-      }
-      if (method === 'PATCH') {
-        const c = clients.find((x) => x.id === id);
-        if (c) Object.assign(c, req.postDataJSON() as Record<string, unknown>);
-        return empty(route);
-      }
-      if (method === 'DELETE') {
-        const i = clients.findIndex((x) => x.id === id);
-        if (i >= 0) clients.splice(i, 1);
-        return empty(route);
-      }
-      return json(route, clients);
-    }
-
-    if (path.endsWith('/rest/v1/consents')) {
-      if (method === 'POST') {
-        const rows = req.postDataJSON() as Record<string, unknown>[];
-        for (const r of rows) {
-          clients
-            .find((c) => c.id === r.client_id)
-            ?.consents.push({ ...r, granted_at: new Date().toISOString() });
-        }
-        return empty(route, 201);
-      }
-      return json(
-        route,
-        clients.flatMap((c) => c.consents),
-      );
-    }
-
-    if (path.endsWith('/rest/v1/data_requests')) {
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        dataRequests.push({
-          id: `d${dataRequests.length + 1}`,
-          received_at: new Date().toISOString(),
-          completed_at: null,
-          outcome: '',
-          ...body,
-        });
-        return empty(route, 201);
-      }
-      return json(route, dataRequests);
-    }
-
-    if (path.endsWith('/rest/v1/programmes')) {
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        const p = {
-          id: `p${Math.random()}`,
-          assigned_at: new Date().toISOString(),
-          programme_items: [] as Record<string, unknown>[],
-          ...body,
-        };
-        clients.find((c) => c.id === body.client_id)?.programmes.push(p);
-        return json(route, { id: p.id });
-      }
-      if (method === 'DELETE') {
-        const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
-        for (const c of clients) c.programmes = c.programmes.filter((p) => p.id !== id);
-        return empty(route);
-      }
-    }
-
-    if (path.endsWith('/rest/v1/programme_items') && method === 'POST') {
-      const rows = req.postDataJSON() as Record<string, unknown>[];
-      for (const c of clients)
-        c.programmes.find((p) => p.id === rows[0]?.programme_id)?.programme_items.push(...rows);
-      return empty(route, 201);
-    }
-
-    if (path.endsWith('/rest/v1/templates')) {
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, string>;
-        const t: StoredTemplate = {
-          id: `t${templates.length + 1}`,
-          name: body.name!,
-          notes: body.notes ?? '',
-          gym_id: body.gym_id!,
-          template_items: [],
-        };
-        templates.push(t);
-        return json(route, { id: t.id });
-      }
-      if (method === 'DELETE') {
-        const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
-        const i = templates.findIndex((t) => t.id === id);
-        if (i >= 0) templates.splice(i, 1);
-        return empty(route);
-      }
-      if (method === 'PATCH') return empty(route);
-      const wantsItems = (url.searchParams.get('select') ?? '').includes('template_items');
-      return json(route, wantsItems ? templates : templates.map(({ id, name }) => ({ id, name })));
-    }
-
-    if (path.endsWith('/rest/v1/template_items')) {
-      if (method === 'POST') {
-        const rows = req.postDataJSON() as Record<string, unknown>[];
-        const t = templates.find((x) => x.id === rows[0]?.template_id);
-        if (t) t.template_items.push(...rows);
-        return empty(route, 201);
-      }
-      return empty(route);
-    }
-    if (path.endsWith('/rest/v1/runs')) {
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        const i = runs.findIndex((r) => r.id === body.id);
-        const row = {
-          ...body,
-          id: String(body.id),
-          run_steps: i >= 0 ? runs[i]!.run_steps : [],
-        } as StoredRun;
-        if (i >= 0) runs[i] = row;
-        else runs.push(row);
-        return empty(route, 201);
-      }
-      if (method === 'DELETE') {
-        const id = (url.searchParams.get('id') ?? '').replace('eq.', '');
-        const i = runs.findIndex((r) => r.id === id);
-        if (i >= 0) runs.splice(i, 1);
-        return empty(route);
-      }
-      return json(route, runs);
-    }
-
-    if (path.endsWith('/rest/v1/run_steps')) {
-      if (method === 'POST') {
-        const rows = req.postDataJSON() as Record<string, unknown>[];
-        const r = runs.find((x) => x.id === rows[0]?.run_id);
-        if (r) r.run_steps.push(...rows);
-        return empty(route, 201);
-      }
-      if (method === 'DELETE') {
-        const id = (url.searchParams.get('run_id') ?? '').replace('eq.', '');
-        const r = runs.find((x) => x.id === id);
-        if (r) r.run_steps = [];
-        return empty(route);
-      }
-    }
-    if (path.endsWith('/rest/v1/share_links')) {
-      if (method === 'POST') {
-        const body = req.postDataJSON() as Record<string, unknown>;
-        const link: StoredLink = {
-          token: String(shareLinks.length + 1).padStart(64, 'a'),
-          programme_id: String(body.programme_id),
-          created_at: new Date().toISOString(),
-          expires_at: (body.expires_at as string | null) ?? null,
-          revoked_at: null,
-        };
-        shareLinks.push(link);
-        return json(route, link);
-      }
-      if (method === 'PATCH') {
-        const token = (url.searchParams.get('token') ?? '').replace('eq.', '');
-        const link = shareLinks.find((l) => l.token === token);
-        if (link) Object.assign(link, req.postDataJSON() as Record<string, unknown>);
-        return empty(route);
-      }
-      const pid = (url.searchParams.get('programme_id') ?? '').replace('eq.', '');
-      return json(
-        route,
-        shareLinks.filter((l) => l.programme_id === pid),
-      );
-    }
-
-    if (path.endsWith('/rest/v1/rpc/save_gym_layout')) {
-      db.layoutSaves.push(req.postDataJSON() as MockDb['layoutSaves'][number]);
-      return json(route, null);
-    }
-
-    // The one thing a visitor who is not logged in may call: what a client's link shows.
-    if (path.endsWith('/rest/v1/rpc/get_shared_programme')) {
-      const { p_token } = req.postDataJSON() as { p_token: string };
-      const link = shareLinks.find((l) => l.token === p_token);
-      const live = link && !link.revoked_at && (!link.expires_at || Date.parse(link.expires_at) > Date.now());
-      if (!live) return json(route, null);
-      const client = clients.find((c) => c.programmes.some((p) => p.id === link.programme_id));
-      const programme = client?.programmes.find((p) => p.id === link.programme_id) as
-        Record<string, unknown> | undefined;
-      if (!client || !programme) return json(route, null);
-      const items = (programme.programme_items as Record<string, unknown>[]).map((i) => ({
-        position: i.position,
-        equipment_id: i.equipment_id,
-        exercise_name: i.exercise_name,
-        sets: i.sets,
-        reps: i.reps,
-        rest: i.rest,
-        note: i.note,
-        cue: '',
-      }));
-      // Only the programme and the plan: nothing from the client's own record.
-      return json(route, {
-        title: programme.title,
-        notes: programme.notes,
-        assigned_at: programme.assigned_at,
-        trainer: profile.business_name,
-        gym: { name: plan.gym.name, branch: plan.gym.branch, address: plan.gym.address },
-        items,
-        floors: floorRowsFromPlan(plan),
-      });
-    }
-    return json(route, {});
+    if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const reply = handle(
+      db,
+      plan,
+      method,
+      new URL(req.url()),
+      req.postData() ? req.postDataJSON() : undefined,
+    );
+    return route.fulfill({
+      status: reply.status,
+      headers: cors,
+      ...(reply.body === undefined
+        ? {}
+        : { contentType: 'application/json', body: JSON.stringify(reply.body) }),
+    });
   });
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { shareUrl } from '@pt/core';
+import { publicLink } from '../../lib/links.ts';
 import { linkStatus, type ShareApi, type ShareLink } from '../../data/share.ts';
 import { copyText } from '../../lib/clipboard.ts';
 import type { PdfModel } from '../../lib/pdf.ts';
@@ -67,7 +67,7 @@ export function SharePanel({ programmeId, title, api, pdf, whatsapp, email, say 
 
   const active = (links ?? []).filter((l) => linkStatus(l) === 'active');
   const newest = active[0];
-  const url = newest ? shareUrl(window.location.origin, newest.token) : undefined;
+  const url = newest ? publicLink(newest.token) : undefined;
 
   return (
     <section className="share" aria-label={`Share ${title}`}>
@@ -100,7 +100,7 @@ export function SharePanel({ programmeId, title, api, pdf, whatsapp, email, say 
         <ul className="rows" aria-label="Links">
           {links.map((l) => {
             const s = linkStatus(l);
-            const href = shareUrl(window.location.origin, l.token);
+            const href = publicLink(l.token);
             return (
               <li key={l.token}>
                 <div className="txt">
