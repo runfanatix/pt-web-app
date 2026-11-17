@@ -104,6 +104,7 @@ Active in `.claude/`:
 | agent `research` | open-ended investigation (library choices, Supabase RLS patterns) without bloating context |
 | skill `pt-ui-build` | build a screen, screenshot at 390 and 1280 px, compare with the prototype, fix, repeat |
 | skill `literature-research` | PubMed search, for the exercise library and evidence-based programme content |
+| skill `ui-ux-pro-max` | UI/UX design intelligence (styles, palettes, font pairings, UX and accessibility guidelines, chart types; searchable via its Python scripts). From nextlevelbuilder/ui-ux-pro-max-skill. Use for design and accessibility input; the prototype still wins on behaviour and look until redesign starts |
 | skills `supabase`, `supabase-postgres-best-practices` | Official Supabase agent skills (installed from supabase/agent-skills, pinned in `skills-lock.json`, files in `.agents/skills`). Use them for any Supabase, RLS, migration or Postgres performance work |
 | MCP server `supabase` | Configured in `.mcp.json` for the project above; needs `claude /mcp` sign-in. It can run SQL: confirm with the owner before any write, and make it read-only once real client data exists |
 
