@@ -105,6 +105,8 @@ Active in `.claude/`:
 | skill `pt-ui-build` | build a screen, screenshot at 390 and 1280 px, compare with the prototype, fix, repeat |
 | skill `literature-research` | PubMed search, for the exercise library and evidence-based programme content |
 | skill `ui-ux-pro-max` | UI/UX design intelligence (styles, palettes, font pairings, UX and accessibility guidelines, chart types; searchable via its Python scripts). From nextlevelbuilder/ui-ux-pro-max-skill. Use for design and accessibility input; the prototype still wins on behaviour and look until redesign starts |
+| skills `21st-ui-build`, `21st-ui-explore`, `21st-ui-review`, `21st-cli-use`, `21st-ai` | 21st.dev skills (installed globally with `npx @21st-dev/cli install-skill`, not in the repo). Build, explore variants of, and review UI; search and install 21st components; generate UI from a prompt. Overlap with `pt-ui-build`: prefer `pt-ui-build` for porting prototype screens, use 21st for new design directions and audits |
+| skills `21st-registry`, `21st-design-sync`, `21st-video` | Publish components or themes to 21st.dev, sync the design to a 21st theme, make videos. Publish anything only when the owner asks |
 | skills `supabase`, `supabase-postgres-best-practices` | Official Supabase agent skills (installed from supabase/agent-skills, pinned in `skills-lock.json`, files in `.agents/skills`). Use them for any Supabase, RLS, migration or Postgres performance work |
 | MCP server `supabase` | Configured in `.mcp.json` for the project above; needs `claude /mcp` sign-in. It can run SQL: confirm with the owner before any write, and make it read-only once real client data exists |
 
