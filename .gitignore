@@ -35,3 +35,6 @@ design-reference/
 # Agent-skill links created by `npx skills` (machine-specific absolute symlinks; recreate with the skills CLI from skills-lock.json)
 .claude/skills/supabase
 .claude/skills/supabase-postgres-best-practices
+
+# Working files written by the design-taste-frontend skill checker
+.taste-skill/
