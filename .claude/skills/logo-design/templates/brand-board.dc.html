@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>[[BRAND]] cards</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<!--
+  Template for one brand board (2600 x 900, or 1700 when the cards wrap to a second row).
+  Replace every [[TOKEN]]. One card per image (direction and roll); keep six per row and
+  repeat the card block as needed. The pick gets: outline: 3px solid #141414;
+  outline-offset: 5px on its <img>, and " · pick" after the label.
+  Remove this comment before publishing.
+-->
+<div style="width: 2600px; box-sizing: border-box; padding: 56px; background: #F4F4F1; color: #141414; font-family: 'Inter Tight', system-ui, sans-serif; display: flex; flex-direction: column; gap: 30px">
+<div style="display: flex; align-items: baseline; gap: 24px">
+<h1 style="margin: 0; font-size: 48px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">[[BRAND]]</h1>
+<span style="font-size: 19px; color: #45453F">[[BUSINESS]] · [[LOGO IDEA]] · [[COLOURS AND BACKGROUND]]</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 12px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]] by [[DIRECTION]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px"><span style="font-size: 16px; line-height: 1.45"><strong>[[DIRECTION]]</strong><br><span style="color: #5C5C57">[[ONE HONEST LINE]]</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 12px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]] by [[DIRECTION]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px; outline: 3px solid #141414; outline-offset: 5px"><span style="font-size: 16px; line-height: 1.45"><strong>[[DIRECTION]]</strong> · pick<br><span style="color: #5C5C57">[[WHY IT WON]]</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 12px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]] by [[DIRECTION]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px"><span style="font-size: 16px; line-height: 1.45"><strong>[[DIRECTION]]</strong><br><span style="color: #5C5C57">[[ONE HONEST LINE]]</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 12px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]] by [[DIRECTION]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px"><span style="font-size: 16px; line-height: 1.45"><strong>[[DIRECTION]]</strong><br><span style="color: #5C5C57">[[ONE HONEST LINE]]</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 12px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]] by [[DIRECTION]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px"><span style="font-size: 16px; line-height: 1.45"><strong>[[DIRECTION]]</strong><br><span style="color: #5C5C57">[[ONE HONEST LINE]]</span></span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2600,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

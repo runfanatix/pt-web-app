@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Batch [[N]]: [[THEME]]</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<!--
+  Template for a batch overview board (2600 x 1900). Replace every [[TOKEN]].
+  The picks grid holds ten cards (repeat the card block once per brand, in brand order).
+  Remove this comment before publishing.
+-->
+<div style="width: 2600px; box-sizing: border-box; padding: 72px 64px; background: #F4F4F1; color: #141414; font-family: 'Inter Tight', system-ui, sans-serif; display: flex; flex-direction: column; gap: 48px">
+
+<div style="display: flex; justify-content: space-between; gap: 64px; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 1350px">
+<span style="font-size: 14px; font-weight: 600; letter-spacing: 0.12em; color: #5C5C57">BATCH [[N]] · GPT IMAGE 2.5 · [[DATE IN CAPS]]</span>
+<h1 style="margin: 0; font-size: 80px; line-height: 0.98; font-weight: 800; letter-spacing: -0.035em">[[THEME]]</h1>
+<p style="margin: 0; font-size: 22px; line-height: 1.5; color: #45453F">[[WHAT IS NEW IN THIS BATCH: LOGO TYPES, BACKGROUNDS, PROMPT CHANGES]]</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 16px; padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; width: 980px; box-sizing: border-box">
+<span style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: #5C5C57">THE BRIEF, WORD FOR WORD</span>
+<p style="margin: 0; font-size: 17px; line-height: 1.55; font-family: ui-monospace, Menlo, monospace">[[THE PROMPT TEMPLATE USED]]</p>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.01em">The pick for each brand</h2>
+<span style="font-size: 18px; color: #45453F">[[N]] images, [[DIRECTIONS]] directions x [[ROLLS]] rolls per brand</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 10px"><img src="/_blob/[[BLOB_ID]]" alt="[[BRAND]]" style="width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 20px"><span style="font-size: 17px"><strong>[[BRAND]]</strong> <span style="color: #5C5C57">· [[DIRECTION]]</span></span></div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 16px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><span style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: #5C5C57">[[FINDING 1 TITLE]]</span><p style="margin: 0; font-size: 18px; line-height: 1.55">[[FINDING 1]]</p></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 16px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><span style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: #5C5C57">[[FINDING 2 TITLE]]</span><p style="margin: 0; font-size: 18px; line-height: 1.55">[[FINDING 2]]</p></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E2DC; border-radius: 16px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><span style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: #5C5C57">[[FINDING 3 TITLE]]</span><p style="margin: 0; font-size: 18px; line-height: 1.55">[[FINDING 3]]</p></div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2600,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
